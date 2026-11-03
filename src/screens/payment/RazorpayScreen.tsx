@@ -292,12 +292,32 @@ const resolvePlanPayableRupees = (data: any): number => {
 
 const PLAN_NOT_ELIGIBLE = 'This package cannot be used for this doctor.';
 
+const formatEligibleOn = (value: string) => {
+    const d = new Date(value);
+    if (Number.isNaN(d.getTime())) return value;
+    return d.toLocaleDateString('en-IN', {
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric',
+    });
+};
+
+const emptyPlanEligibility = (): PlanEligibility => ({
+    loading: true,
+    canFund: false,
+    isFollowup: false,
+    reason: '',
+    payable: null,
+    quantityRemaining: null,
+});
+
 /** fee-quote `data.package_funding` → selectable only when `can_fund` is true. */
 const readPlanFunding = (res: any): PlanEligibility => {
     const data = res?.data ?? {};
     const funding = data?.package_funding ?? {};
     const canFund = isApiSuccess(res) && funding?.can_fund === true;
-    const payableRaw = funding?.total_payable_amount;
+    const payableRaw =
+        funding?.total_payable_amount ?? data?.summary?.total_payable_amount;
     const payable =
         payableRaw != null && payableRaw !== '' && Number.isFinite(Number(payableRaw))
             ? roundMoney(Number(payableRaw))
@@ -305,12 +325,19 @@ const readPlanFunding = (res: any): PlanEligibility => {
                 ? resolvePlanPayableRupees(data)
                 : null;
     const remaining = funding?.quantity_remaining;
+    const ineligibleMessage = String(funding?.ineligible_message || '').trim();
+    const ineligibleReason = String(funding?.ineligible_reason || '').trim();
+    const eligibleOn = String(funding?.eligible_on || '').trim();
+    const waitingCopy = eligibleOn
+        ? `Follow-up available on ${formatEligibleOn(eligibleOn)}`
+        : '';
     return {
         loading: false,
         canFund,
+        isFollowup: funding?.is_followup === true,
         reason: canFund
             ? ''
-            : String(funding?.ineligible_reason || res?.message || PLAN_NOT_ELIGIBLE),
+            : ineligibleMessage || ineligibleReason || waitingCopy || String(res?.message || PLAN_NOT_ELIGIBLE),
         payable,
         quantityRemaining:
             remaining != null && Number.isFinite(Number(remaining)) ? Number(remaining) : null,
@@ -394,12 +421,7 @@ const RazorpayScreen = ({ route, navigation }: any) => {
         if (!id || activePlans.length === 0) return;
         let cancelled = false;
         setPlanEligibility(
-            Object.fromEntries(
-                activePlans.map(p => [
-                    p.id,
-                    { loading: true, canFund: false, reason: '', payable: null, quantityRemaining: null },
-                ]),
-            ),
+            Object.fromEntries(activePlans.map(p => [p.id, emptyPlanEligibility()])),
         );
         Promise.all(
             activePlans.map(async plan => {
@@ -412,6 +434,7 @@ const RazorpayScreen = ({ route, navigation }: any) => {
                         {
                             loading: false,
                             canFund: false,
+                            isFollowup: false,
                             reason: e?.message || 'Unable to check this plan',
                             payable: null,
                             quantityRemaining: null,
@@ -434,6 +457,9 @@ const RazorpayScreen = ({ route, navigation }: any) => {
     const usablePlans = useMemo(
         () => activePlans.filter(p => planEligibility[p.id]?.canFund),
         [activePlans, planEligibility],
+    );
+    const planEligibilityLoading = activePlans.some(
+        plan => !planEligibility[plan.id] || planEligibility[plan.id]?.loading,
     );
 
     useEffect(() => {
@@ -740,10 +766,12 @@ const RazorpayScreen = ({ route, navigation }: any) => {
                     );
                     return;
                 }
-                // Plan covers the consultation — appointment is confirmed, no gateway
-                if (!hasGatewayOrder(paymentResponse?.data)) {
+                const planData = pickConsultPaymentData(paymentResponse);
+                const nothingDue = !(planPayable && planPayable > 0);
+                // Follow-up credit covers the visit — confirm without Razorpay or Cashfree.
+                if (nothingDue || !hasGatewayOrder(planData)) {
                     await onBookingSuccess(
-                        paymentResponse?.data,
+                        planData,
                         currentSlotId,
                         paymentResponse?.message || 'Appointment confirmed with your plan',
                     );
@@ -1303,12 +1331,28 @@ const RazorpayScreen = ({ route, navigation }: any) => {
         (usingPlan ? false : feeQuoteLoading || !feeQuote);
     const priceLoading = usingPlan ? planQuoteLoading : feeQuoteLoading || planQuoteLoading;
     const planIsFree = usingPlan && planPayable === 0;
+    const selectedPlanQuote = selectedPlan ? planEligibility[selectedPlan.id] : undefined;
     const selectedPlanRemaining = (() => {
+        if (selectedPlanQuote && !selectedPlanQuote.loading && selectedPlanQuote.canFund) {
+            if (selectedPlanQuote.quantityRemaining == null) {
+                return selectedPlanQuote.isFollowup ? 'Follow-up included' : 'Unlimited consultations';
+            }
+            const count = selectedPlanQuote.quantityRemaining;
+            const unit = selectedPlanQuote.isFollowup ? 'follow-up' : 'consultation';
+            return `${count} ${unit}${count === 1 ? '' : 's'} left`;
+        }
         const benefit = selectedPlan ? getConsultBenefit(selectedPlan) : null;
         if (!benefit) return '';
-        if (benefit.quantity_remaining == null) return 'Unlimited consultations';
-        return `${benefit.quantity_remaining} consultation${benefit.quantity_remaining === 1 ? '' : 's'} left`;
+        const followup = /follow[\s-]?up/i.test(String(benefit.label || ''));
+        if (benefit.quantity_remaining == null) {
+            return followup ? 'Follow-up included' : 'Unlimited consultations';
+        }
+        const unit = followup ? 'follow-up' : 'consultation';
+        return `${benefit.quantity_remaining} ${unit}${benefit.quantity_remaining === 1 ? '' : 's'} left`;
     })();
+    const blockedPlanReason = activePlans
+        .map(plan => planEligibility[plan.id])
+        .find(quote => quote && !quote.loading && !quote.canFund && quote.reason)?.reason;
 
     return (
         <>
@@ -1574,8 +1618,11 @@ const RazorpayScreen = ({ route, navigation }: any) => {
                                         </Text>
                                         <Text style={styles.planPromptSub}>
                                             {usablePlans.length > 0
-                                                ? 'Book this consultation without paying'
-                                                : 'Consultations in your plans are used up'}
+                                                ? 'Book this visit with your plan'
+                                                : planEligibilityLoading
+                                                    ? 'Checking your plan for this visit…'
+                                                    : blockedPlanReason ||
+                                                      'This plan cannot be used for this visit'}
                                         </Text>
                                     </View>
                                     <Text style={styles.planPromptCta}>

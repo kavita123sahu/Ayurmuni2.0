@@ -23,7 +23,7 @@ import {
 import { formatRupee } from '../../utils/currencyUtils';
 
 const UNUSABLE_LABEL: Record<Exclude<PlanConsultState, 'usable'>, string> = {
-  exhausted: 'Consultation already used',
+  exhausted: 'Plan credits used up',
   expired: 'Plan expired',
   no_consult: 'Consultation not included',
 };
@@ -48,12 +48,19 @@ const formatDate = (value?: string | null) => {
   return d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
 };
 
+const creditLabel = (count: number, followup: boolean) => {
+  const unit = followup ? 'follow-up' : 'consultation';
+  return `${count} ${unit}${count === 1 ? '' : 's'} left`;
+};
+
 const getRemainingLabel = (plan: MyPlan) => {
   const benefit = getConsultBenefit(plan);
   if (!benefit) return '';
-  if (benefit.quantity_remaining == null) return 'Unlimited consultations';
-  const total = benefit.quantity_total != null ? ` of ${benefit.quantity_total}` : '';
-  return `${benefit.quantity_remaining}${total} consultation${benefit.quantity_remaining === 1 ? '' : 's'} left`;
+  const followup = /follow[\s-]?up/i.test(String(benefit.label || ''));
+  if (benefit.quantity_remaining == null) {
+    return followup ? 'Follow-up included' : 'Unlimited consultations';
+  }
+  return creditLabel(benefit.quantity_remaining, followup);
 };
 
 /** "Which plan do you want to use?" sheet on Confirm Booking. */
@@ -70,17 +77,22 @@ const ActivePlanPickerSheet = ({
   const [pickedId, setPickedId] = useState<string | null>(selectedId ?? null);
 
   const getRowStatus = (plan: MyPlan): RowStatus => {
-    const quote = eligibility?.[plan.id];
-    if (quote) {
-      if (quote.loading) {
-        return { usable: false, loading: true, label: 'Checking plan for this doctor…' };
+    // Fee-quote package_funding is the only selectability check once quotes are in play.
+    if (eligibility) {
+      const quote = eligibility[plan.id];
+      if (!quote || quote.loading) {
+        return { usable: false, loading: true, label: 'Checking this plan for this visit…' };
       }
       if (!quote.canFund) {
-        return { usable: false, loading: false, label: quote.reason };
+        return {
+          usable: false,
+          loading: false,
+          label: quote.reason || 'This plan cannot cover this visit',
+        };
       }
       const left =
         quote.quantityRemaining != null
-          ? `${quote.quantityRemaining} consultation${quote.quantityRemaining === 1 ? '' : 's'} left`
+          ? creditLabel(quote.quantityRemaining, quote.isFollowup)
           : getRemainingLabel(plan);
       return { usable: true, loading: false, label: left };
     }
@@ -93,6 +105,9 @@ const ActivePlanPickerSheet = ({
   const firstUsableId = plans.find(p => getRowStatus(p).usable)?.id ?? null;
   const hasUsable = firstUsableId != null;
   const checking = plans.some(p => getRowStatus(p).loading);
+  const blockedLabel = plans
+    .map(plan => getRowStatus(plan))
+    .find(status => !status.usable && !status.loading && status.label)?.label;
 
   useEffect(() => {
     if (visible) setPickedId(selectedId ?? firstUsableId);
@@ -120,10 +135,11 @@ const ActivePlanPickerSheet = ({
               <Text style={styles.heroTitle}>Your active plans</Text>
               <Text style={styles.heroSub}>
                 {checking && !hasUsable
-                  ? 'Checking which of your plans can be used for this doctor…'
+                  ? 'Checking which of your plans can cover this visit…'
                   : hasUsable
-                    ? 'No payment needed — this consultation is covered by your plan.'
-                    : 'Your plans cannot be used for this consultation. You can continue with normal payment.'}
+                    ? 'Select a plan. A covered visit confirms without a payment screen.'
+                    : blockedLabel ||
+                      'This plan cannot cover this visit. You can continue with normal payment.'}
               </Text>
             </View>
             <TouchableOpacity onPress={onClose} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
@@ -140,11 +156,12 @@ const ActivePlanPickerSheet = ({
               const selected = usable && plan.id === pickedId;
               const remaining = status.label;
               const expires = formatDate(plan.expires_at);
-              const payable = eligibility?.[plan.id]?.payable;
+              const quote = eligibility?.[plan.id];
+              const payable = quote?.payable;
               const planPrice = Number(plan.paid_price || plan.original_price || 0);
-              const consult = getConsultBenefit(plan);
+              const consult = quote?.isFollowup ? null : getConsultBenefit(plan);
               const consultUsage =
-                consult?.quantity_total != null
+                consult && !/follow[\s-]?up/i.test(String(consult.label || '')) && consult.quantity_total != null
                   ? `${Math.max(0, (consult.quantity_total ?? 0) - (consult.quantity_remaining ?? 0))}/${consult.quantity_total} consultations used`
                   : '';
               return (
@@ -197,7 +214,9 @@ const ActivePlanPickerSheet = ({
                       <Text style={styles.planPrice}>{formatRupee(planPrice)}</Text>
                     ) : null}
                     {usable && payable != null ? (
-                      <Text style={styles.payNow}>Pay {formatRupee(payable)}</Text>
+                      <Text style={styles.payNow}>
+                        {payable === 0 ? 'Covered · ₹0' : `Pay ${formatRupee(payable)}`}
+                      </Text>
                     ) : null}
                     <View style={[styles.radio, selected && styles.radioOn]}>
                       {selected ? <View style={styles.radioDot} /> : null}

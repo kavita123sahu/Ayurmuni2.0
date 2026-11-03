@@ -1,26 +1,60 @@
 import type { TablerIconName } from '../TablerIcon';
 import type { MyPlan, MyPlanBenefit, PackagePlan } from '../../services/PackageServices';
 
+const benefitLabel = (benefit: { label?: string | null }) =>
+  String(benefit?.label || '');
+
+const isFollowUpLabel = (label: string) => /follow[\s-]?up/i.test(label);
+
+const isConsultLabel = (label: string) => /consult/i.test(label);
+
+/** Credits that can cover a doctor or dietitian visit, including follow-ups. */
+const getVisitBenefits = (plan: MyPlan) => {
+  const rows = [
+    ...(plan.benefits || []),
+    ...(plan.shifted_consumables || []),
+  ];
+  return rows.filter(benefit => {
+    const label = benefitLabel(benefit);
+    return isConsultLabel(label) || isFollowUpLabel(label);
+  });
+};
+
+const benefitHasCredit = (benefit: {
+  status?: string | null;
+  quantity_remaining?: number | null;
+}) => {
+  const status = String(benefit.status || 'available').toLowerCase();
+  if (status && status !== 'available') return false;
+  if (benefit.quantity_remaining == null) return true;
+  return Number(benefit.quantity_remaining) > 0;
+};
+
 /**
  * Consultation benefit of a purchased plan (label based — API has no benefit code).
- * Prefers "Doctor Consultation", then any non-diet consult, then any consult.
+ * A remaining follow-up still counts when the matching consultation credit is 0.
  */
 export const getConsultBenefit = (plan: MyPlan): MyPlanBenefit | null => {
-  const consults = (plan.benefits || []).filter(b =>
-    /consult/i.test(String(b?.label || '')),
-  );
+  const credits = getVisitBenefits(plan);
+  const withCredit = credits.filter(benefitHasCredit);
+  const pool = withCredit.length > 0 ? withCredit : credits;
   return (
-    consults.find(b => /doctor/i.test(String(b.label))) ??
-    consults.find(b => !/diet/i.test(String(b.label))) ??
-    consults[0] ??
+    pool.find(b => isFollowUpLabel(benefitLabel(b)) && /doctor/i.test(benefitLabel(b))) ??
+    pool.find(b => isFollowUpLabel(benefitLabel(b)) && /diet/i.test(benefitLabel(b))) ??
+    pool.find(b => isFollowUpLabel(benefitLabel(b))) ??
+    pool.find(b => /doctor/i.test(benefitLabel(b)) && isConsultLabel(benefitLabel(b))) ??
+    pool.find(b => isConsultLabel(benefitLabel(b)) && !/diet/i.test(benefitLabel(b))) ??
+    pool[0] ??
     null
   );
 };
 
-/** Per-plan result of fee-quote `package_funding` for the current slot / doctor. */
+/** Per-plan result of fee-quote `package_funding` for the current slot. */
 export type PlanEligibility = {
   loading: boolean;
   canFund: boolean;
+  /** True when the follow-up credit, not the consultation credit, is funding the slot. */
+  isFollowup: boolean;
   reason: string;
   payable: number | null;
   quantityRemaining: number | null;
@@ -33,14 +67,11 @@ export const getPlanConsultState = (plan: MyPlan): PlanConsultState => {
     const expires = new Date(plan.expires_at).getTime();
     if (Number.isFinite(expires) && expires <= Date.now()) return 'expired';
   }
-  const benefit = getConsultBenefit(plan);
-  if (!benefit) return 'no_consult';
-  const status = String(benefit.status || 'available').toLowerCase();
-  if (status !== 'available') return 'exhausted';
-  if (benefit.quantity_remaining != null && benefit.quantity_remaining <= 0) {
-    return 'exhausted';
-  }
-  return 'usable';
+  const credits = getVisitBenefits(plan);
+  if (credits.length === 0) return 'no_consult';
+  // Doctor consultation remaining 0 must not hide a leftover follow-up credit.
+  if (credits.some(benefitHasCredit)) return 'usable';
+  return 'exhausted';
 };
 
 export const isActivePlan = (plan: MyPlan) =>
