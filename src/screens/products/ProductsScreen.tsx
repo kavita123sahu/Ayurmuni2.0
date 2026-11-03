@@ -13,8 +13,7 @@ import Header from '../../components/Header';
 import ProductCard from '../../components/ProductCard';
 import SectionHeader from '../../components/SectionHeader';
 import Detailimages from '../../components/Detailimages';
-import { useFocusEffect, useNavigation } from '@react-navigation/native';
-import { shouldRunThrottled } from '../../utils/fetchThrottle';
+import { useNavigation } from '@react-navigation/native';
 import { Colors } from '../../common/Colors';
 import { SCREEN_THEME } from '../../constants/screenTheme';
 import { useHomeData } from '../../hooks/UseHomeData';
@@ -123,15 +122,6 @@ const ProductsScreen = () => {
   const handleViewOrderHistory = useCallback(() => {
     navigation.navigate('OrderHistory');
   }, [navigation]);
-
-  useFocusEffect(
-    useCallback(() => {
-      if (!shouldRunThrottled('products-tab-focus-refresh', 30_000)) return;
-      void refreshHomeData();
-      refresh();
-      refreshOrders();
-    }, [refreshHomeData, refresh, refreshOrders]),
-  );
 
   const handleCartUpdate = useCallback(
     async (item: any, newQty: number) => {

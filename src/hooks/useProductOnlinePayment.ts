@@ -561,13 +561,6 @@ export const useProductOnlinePayment = () => {
               hintPaymentId: cfResult.gatewayPaymentId,
             });
           }
-          if (!/^\d{8,}$/.test(cfGatewayPaymentId)) {
-            showSuccessToast(
-              'Payment received, but Cashfree cf_payment_id is missing. Ensure book-slot/order returns cashfree credentials.',
-              'error',
-            );
-            return;
-          }
 
           setIsVerifyingPayment(true);
           let verifyBody;
@@ -589,14 +582,18 @@ export const useProductOnlinePayment = () => {
 
           let verifyResponse: any;
           try {
-            verifyResponse = await _ORDER_SERVICES.verifyOrderPayment(verifyBody);
+            verifyResponse = await _ORDER_SERVICES.verifyOrderPayment({
+              ...verifyBody,
+              payment_gateway: 'cashfree',
+              cashfree_order_id: cfOrderId,
+            });
           } catch (verifyError: any) {
             verifyResponse =
               verifyError?.response ?? verifyError?.data ?? verifyError;
           }
           setIsVerifyingPayment(false);
 
-          if (verifyResponse?.success || cfResult.status === 'success') {
+          if (verifyResponse?.success) {
             finishSuccess(verifyResponse, {
               cashfree_order_id: cfResult.orderId,
               payment_gateway: 'cashfree',
@@ -604,7 +601,8 @@ export const useProductOnlinePayment = () => {
             return;
           }
           showSuccessToast(
-            verifyResponse?.message || 'Payment verification failed.',
+            verifyResponse?.message ||
+              'Cashfree received the payment. The server still needs to confirm this order.',
             'error',
           );
           return;

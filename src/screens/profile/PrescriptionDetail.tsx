@@ -25,7 +25,6 @@ import {
   consultationHasPrescription,
   formatIssuedLabel,
   getAllergiesList,
-  getClinicalAdvisory,
   getConcernText,
   getDiagnosisText,
   getDoList,
@@ -298,7 +297,6 @@ const PrescriptionDetail = (props: any) => {
   const doItems = getDoList(prescription);
   const dontItems = getDontList(prescription);
   const suggestions = getSuggestionList(prescription);
-  const clinicalNotes = getClinicalAdvisory(prescription);
   const doctorLocation = getDoctorLocationLine(doctor);
   const doctorId = doctor?.doctor_id || doctor?.id || null;
   const hasContent = consultationHasPrescription(payload);
@@ -314,7 +312,6 @@ const PrescriptionDetail = (props: any) => {
     prescription?.id ||
     normalized.prescriptionId,
   );
-  const symptomText = getSymptomDescription(prescription);
   const allergies = getAllergiesList(prescription);
   const pastIllnessText = getPastIllnessText(prescription);
   const familyHistoryText = getFamilyHistoryText(prescription);
@@ -738,8 +735,6 @@ const PrescriptionDetail = (props: any) => {
 
             {/* Clinical findings */}
             {(!!presentingComplaint ||
-              !!symptomText ||
-              !!clinicalNotes ||
               allergies.length > 0 ||
               !!pastIllnessText ||
               !!familyHistoryText ||

@@ -14,7 +14,6 @@ import { getDoctorLocationLine } from './doctorSlipUtils';
 import {
   formatIssuedLabel,
   getAllergiesList,
-  getClinicalAdvisory,
   getConcernText,
   getDiagnosisText,
   getDietAdvice,
@@ -247,7 +246,6 @@ export async function buildPrescriptionPdfFromData(
   const doItems = getDoList(prescription);
   const dontItems = getDontList(prescription);
   const suggestions = getSuggestionList(prescription);
-  const clinicalAdvisory = getClinicalAdvisory(prescription);
   const allergies = getAllergiesList(prescription);
   const pastIllnessText = getPastIllnessText(prescription);
   const familyHistoryText = getFamilyHistoryText(prescription);
@@ -259,36 +257,6 @@ export async function buildPrescriptionPdfFromData(
 
   if (chiefComplaint) {
     pushSection(sections, 'Chief Complaint', [chiefComplaint]);
-  }
-
-  if (
-    diagnosisText &&
-    diagnosisText.toLowerCase() !== chiefComplaint.toLowerCase()
-  ) {
-    pushSection(sections, 'Diagnosis', [diagnosisText]);
-  }
-
-  if (appointmentNotes) {
-    pushSection(sections, 'Notes', [appointmentNotes]);
-  }
-
-  if (followUp.hasContent) {
-    const followLines = [
-      followUp.dateLabel ? `Date: ${followUp.dateLabel}` : '',
-      followUp.reason ? `Reason: ${followUp.reason}` : '',
-      followUp.notes ? `Notes: ${followUp.notes}` : '',
-      followUp.status ? `Status: ${followUp.status}` : '',
-    ].filter(Boolean);
-    pushSection(sections, 'Follow-up', followLines);
-  }
-
-  // Only add a separate Symptoms section when it differs from Chief Complaint
-  if (
-    symptomText &&
-    chiefComplaint &&
-    symptomText.toLowerCase() !== chiefComplaint.toLowerCase()
-  ) {
-    pushSection(sections, 'Symptoms', [symptomText]);
   }
 
   if (allergies.length) {
@@ -311,8 +279,15 @@ export async function buildPrescriptionPdfFromData(
     pushSection(sections, 'Gynaecological History', gynaecological);
   }
 
-  if (clinicalAdvisory) {
-    pushSection(sections, 'Clinical notes', [clinicalAdvisory]);
+  if (
+    diagnosisText &&
+    diagnosisText.toLowerCase() !== chiefComplaint.toLowerCase()
+  ) {
+    pushSection(sections, 'Diagnosis', [diagnosisText]);
+  }
+
+  if (appointmentNotes) {
+    pushSection(sections, 'Notes', [appointmentNotes]);
   }
 
   if (dietPlans.length) {
@@ -351,8 +326,14 @@ export async function buildPrescriptionPdfFromData(
     }
   }
 
-  if (clinicalAdvisory) {
-    pushSection(sections, 'Clinical Observations', [clinicalAdvisory]);
+  if (followUp.hasContent) {
+    const followLines = [
+      followUp.dateLabel ? `Date: ${followUp.dateLabel}` : '',
+      followUp.reason ? `Reason: ${followUp.reason}` : '',
+      followUp.notes ? `Notes: ${followUp.notes}` : '',
+      followUp.status ? `Status: ${followUp.status}` : '',
+    ].filter(Boolean);
+    pushSection(sections, 'Follow-up', followLines);
   }
 
   const physicianLines = [
@@ -432,7 +413,9 @@ export async function buildPrescriptionPdfFromData(
           pick(
             appointment?.consultation_id,
             normalized.consultationId,
-            appointment?.id,
+            data?.consultation_id,
+            data?.consultation?.consultation_id,
+            appointment?.consultation?.consultation_id,
           ),
         ),
       },

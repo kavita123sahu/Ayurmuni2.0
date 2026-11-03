@@ -51,7 +51,10 @@ import {
   formatPrescriptionId,
   formatReceiptId,
 } from './formatDisplayId';
-import { parseConsultationReceiptBreakdown } from './consultationReceiptUtils';
+import {
+  parseConsultationReceiptBreakdown,
+  resolveReceiptConsultationId,
+} from './consultationReceiptUtils';
 
 const pick = (...values: any[]) => {
 
@@ -428,7 +431,9 @@ export async function createMedicalReceiptPdfBytes(
 
         label: 'Consultation No',
 
-        value: formatConsultationId(receipt?.consultation_id),
+        value: formatConsultationId(
+          resolveReceiptConsultationId(receipt) || receipt?.consultation_id,
+        ),
 
       },
 

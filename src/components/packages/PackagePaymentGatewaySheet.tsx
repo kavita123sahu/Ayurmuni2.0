@@ -1,4 +1,4 @@
-import React, { memo, useEffect, useState } from 'react';
+import React, { memo, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Modal,
@@ -13,9 +13,11 @@ import { Fonts } from '../../common/Fonts';
 import TablerIcon from '../TablerIcon';
 import PaymentGatewaySelector from '../payment/PaymentGatewaySelector';
 import { usePaymentGateways } from '../../hooks/usePaymentGateways';
-import type { PaymentGateway } from '../../config/paymentGateways';
-import { RupeeAmount } from '../../utils/currencyUtils';
+import { ensurePackageGateways, type PaymentGateway } from '../../config/paymentGateways';
+import { isPayphiNativeLinked } from '../../services/PayphiService';
 import type { PackagePlan } from '../../services/PackageServices';
+import PackagePriceSummary, { readPackageFees } from './PackagePriceSummary';
+import { RupeeAmount } from '../../utils/currencyUtils';
 
 type Props = {
   visible: boolean;
@@ -35,9 +37,16 @@ const PackagePaymentGatewaySheet = ({
 }: Props) => {
   const insets = useSafeAreaInsets();
   const { gateways, defaultGateway, loading } = usePaymentGateways({
-    fallbackGateways: ['razorpay', 'cashfree', 'icici'],
+    fallbackGateways: ['cashfree', 'razorpay', 'icici'],
   });
-  const [selected, setSelected] = useState<PaymentGateway>(defaultGateway || 'razorpay');
+  const gatewayOptions = useMemo(
+    () =>
+      ensurePackageGateways(gateways, {
+        payphiNativeLinked: isPayphiNativeLinked(),
+      }),
+    [gateways],
+  );
+  const [selected, setSelected] = useState<PaymentGateway>(defaultGateway || 'cashfree');
 
   useEffect(() => {
     if (visible && defaultGateway) {
@@ -59,16 +68,24 @@ const PackagePaymentGatewaySheet = ({
               <TablerIcon name="x" size={18} color="#64748B" />
             </TouchableOpacity>
           </View>
-          <View style={styles.amountRow}>
-            <Text style={styles.amountLabel}>Amount payable</Text>
-            <RupeeAmount value={plan.selling_price} style={styles.amount} decimals={false} />
-          </View>
+          {readPackageFees(plan) ? (
+            <View style={styles.summary}>
+              <PackagePriceSummary source={plan} totalLabel="Amount payable" />
+            </View>
+          ) : (
+            <View style={styles.summary}>
+              <View style={styles.amountRow}>
+                <Text style={styles.amountLabel}>Amount payable</Text>
+                <RupeeAmount value={plan.selling_price} style={styles.amount} decimals={2} />
+              </View>
+            </View>
+          )}
 
           {loading ? (
             <ActivityIndicator style={{ marginVertical: 20 }} color={Colors.primaryColor} />
           ) : (
             <PaymentGatewaySelector
-              options={gateways}
+              options={gatewayOptions}
               selected={selected}
               onSelect={setSelected}
               disabled={processing}
@@ -132,6 +149,9 @@ const styles = StyleSheet.create({
     color: '#1F2A27',
     paddingRight: 12,
   },
+  summary: {
+    marginBottom: 14,
+  },
   amountRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -140,7 +160,6 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     paddingHorizontal: 14,
     paddingVertical: 12,
-    marginBottom: 14,
   },
   amountLabel: {
     fontFamily: Fonts.PoppinsMedium,

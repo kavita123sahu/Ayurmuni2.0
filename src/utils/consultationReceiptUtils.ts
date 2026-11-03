@@ -58,6 +58,7 @@ export type ConsultationReceiptBreakdown = {
   paidAt: string;
   email: string;
   contact: string;
+  consultationId: string;
 };
 
 export const parseConsultationReceiptBreakdown = (
@@ -131,5 +132,28 @@ export const parseConsultationReceiptBreakdown = (
     ).trim(),
     email: String(entity?.email || '').trim(),
     contact: String(entity?.contact || '').trim(),
+    consultationId: resolveReceiptConsultationId(receipt, notes),
   };
+};
+
+/** Consultation id for the receipt screen and downloadable invoice. */
+export const resolveReceiptConsultationId = (
+  receipt: any,
+  notes?: Record<string, any>,
+): string => {
+  const paymentNotes = notes || getConsultationPaymentNotes(receipt);
+  const candidates = [
+    receipt?.consultation_id,
+    receipt?.consultation?.consultation_id,
+    receipt?.consultation?.id,
+    receipt?.appointment?.consultation_id,
+    receipt?.info?.consultation_id,
+    paymentNotes?.consultation_id,
+    paymentNotes?.consultationId,
+  ];
+  for (const value of candidates) {
+    const text = String(value ?? '').trim();
+    if (text && text !== 'null' && text !== 'undefined') return text;
+  }
+  return '';
 };

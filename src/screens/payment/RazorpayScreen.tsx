@@ -1135,7 +1135,6 @@ const RazorpayScreen = ({ route, navigation }: any) => {
                     cfResult.orderId ||
                     cfSession.orderId;
 
-                // cf_payment_id from SDK events or Cashfree Get Payments (not a Django API)
                 let cfGatewayPaymentId = String(
                     cfResult.gatewayPaymentId || '',
                 ).trim();
@@ -1146,13 +1145,6 @@ const RazorpayScreen = ({ route, navigation }: any) => {
                         appSecret: cfSession.appSecret,
                         hintPaymentId: cfResult.gatewayPaymentId,
                     });
-                }
-                if (!/^\d{8,}$/.test(cfGatewayPaymentId)) {
-                    showSuccessToast(
-                        'Payment received, but Cashfree cf_payment_id is missing. Ensure book-slot returns cashfree credentials, or check My Appointments.',
-                        'error',
-                    );
-                    return;
                 }
 
                 setIsVerifyingPayment(true);

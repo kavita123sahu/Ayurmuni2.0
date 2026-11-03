@@ -56,15 +56,6 @@ export const useProductCategories = (
 
         let list = mapList(response);
 
-        // Top-level empty with service filter → retry without service filter
-        if (!list.length && !parent && serviceCategoryId) {
-          const fallbackRes = await getProductCategories();
-          if (reqId !== requestIdRef.current) {
-            return;
-          }
-          list = mapList(fallbackRes);
-        }
-
         // When loading children, keep only rows under this parent
         if (parent) {
           list = list.filter(item => {

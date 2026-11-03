@@ -28,7 +28,7 @@ import ProductSearchFilterBar, {
   BrandFilterOption,
 } from '../../components/ProductSearchFilterBar';
 import { Colors } from '../../common/Colors';
-import { useHomeData } from '../../hooks/UseHomeData';
+import { selectHomeData } from '../../store/slices/homeSlice';
 import { TopSellingListSkeleton } from '../../simmerScreen/ShimmerHook';
 import { getScreenBottomPadding } from '../../constants/layout';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
@@ -59,8 +59,6 @@ import {
   normalizeApiList,
   PRODUCT_PAGE_SIZE,
 } from '../../services/ProductServices';
-import { useFocusEffect } from '@react-navigation/native';
-import { shouldRunThrottled } from '../../utils/fetchThrottle';
 import {
   ProductCategoryItem,
   useProductCategories,
@@ -183,12 +181,7 @@ const CategoryProductsScreen = (props: any) => {
 
   const insets = useSafeAreaInsets();
   const bottomPadding = getScreenBottomPadding(insets);
-  const {
-    categories: dashboardCategories,
-    medicineProducts,
-    storeProducts,
-    productData,
-  } = useHomeData();
+  const dashboardCategories = useAppSelector(selectHomeData).categories;
   const dispatch = useAppDispatch();
   const variantQuantities = useAppSelector(s => s.cart.variantQuantities);
   const addingVariantId = useAppSelector(s => s.cart.addingVariantId);
@@ -252,11 +245,14 @@ const CategoryProductsScreen = (props: any) => {
       ? medicineServiceId
       : null;
 
+  const healthRailEnabled = useHealthRail || useBothRail;
   const {
     categories: healthTopCategories,
     loading: healthTopLoading,
     refresh: refreshHealthTop,
-  } = useHealthCategories(null, healthTopServiceId);
+  } = useHealthCategories(null, healthTopServiceId, {
+    enabled: healthRailEnabled,
+  });
 
   const topCategories = useMemo<CategoryItem[]>(() => {
     if (useHealthRail) return healthTopCategories;
@@ -357,15 +353,16 @@ const CategoryProductsScreen = (props: any) => {
     !!activeCategoryId &&
     (useBothRail ? activeRail === 'health' : useHealthRail);
 
-  const {
-    categories: productSubcategories,
-    loading: productSubLoading,
-    refresh: refreshProductSub,
-  } = useProductCategories(
-    loadProductSubs ? activeCategoryId : null,
-    useBothRail ? null : !useHealthRail ? serviceCategoryId : null,
-    { enabled: loadProductSubs },
-  );
+  const productSubcategories = useMemo(() => {
+    if (!loadProductSubs || !activeCategoryId) return [];
+    return productTopCategories.filter(item => {
+      if (String(item.id) === String(activeCategoryId)) return false;
+      const parent = String(item.parent_id || '');
+      return parent ? parent === String(activeCategoryId) : false;
+    });
+  }, [loadProductSubs, activeCategoryId, productTopCategories]);
+  const productSubLoading = false;
+  const refreshProductSub = refreshProductTop;
 
   const {
     categories: healthSubcategories,
@@ -378,6 +375,7 @@ const CategoryProductsScreen = (props: any) => {
       : useHealthRail
         ? serviceCategoryId
         : null,
+    { enabled: loadHealthSubs },
   );
 
   const subcategories = loadHealthSubs
@@ -465,41 +463,6 @@ const CategoryProductsScreen = (props: any) => {
     };
   }, [baseProductFilter, priceRange, ratingFilter, doshaFilter, sortBy]);
 
-  const fallbackCatalog = useMemo(() => {
-    const store = Array.isArray(storeProducts) ? storeProducts : [];
-    const medicine = Array.isArray(medicineProducts) ? medicineProducts : [];
-    const home = Array.isArray(productData) ? productData : [];
-
-    if (useHealthRail || activeRail === 'health') {
-      return medicine.length ? medicine : store.length ? store : home;
-    }
-
-    if (useBothRail || isBrandAllView) {
-      const seen = new Set<string>();
-      const merged: any[] = [];
-      [...store, ...medicine, ...home].forEach(item => {
-        const key = String(
-          item?.variant_id ?? item?.id ?? item?.product_id ?? '',
-        );
-        if (key && seen.has(key)) return;
-        if (key) seen.add(key);
-        merged.push(item);
-      });
-      return merged;
-    }
-
-    // Shop by Category (products) → store catalog
-    return store.length ? store : home.length ? home : medicine;
-  }, [
-    isBrandAllView,
-    useHealthRail,
-    useBothRail,
-    activeRail,
-    medicineProducts,
-    storeProducts,
-    productData,
-  ]);
-
   const {
     products: fetchedProducts,
     loading: baseLoading,
@@ -507,7 +470,7 @@ const CategoryProductsScreen = (props: any) => {
     refreshing,
     refresh,
     loadMore,
-  } = useCategoryProducts(productFilter, fallbackCatalog, {
+  } = useCategoryProducts(productFilter, [], {
     // Skip unscoped page in both-All — dual-service merge is the source of truth
     enabled: !isBothAllView,
   });
@@ -530,14 +493,14 @@ const CategoryProductsScreen = (props: any) => {
   const bothAllSharedRef = useRef<Record<string, unknown>>({});
   const bothAllServiceIdsRef = useRef<string[]>([]);
   const bothAllLoadLockRef = useRef(false);
+  /** First shop-all request stays put. Later service ids must not start a second load. */
+  const bothAllServiceLockRef = useRef<string[] | 'open' | null>(null);
 
   const bothAllKey = useMemo(
     () =>
       isBothAllView
         ? JSON.stringify({
           brand: apiBrandNameId || null,
-          productsServiceId: productsServiceId || null,
-          medicineServiceId: medicineServiceId || null,
           price: getPriceRangeBounds(priceRange),
           rating: ratingFilter === 'all' ? null : ratingFilter,
           dosha: doshaFilter === 'all' ? null : doshaFilter,
@@ -548,8 +511,6 @@ const CategoryProductsScreen = (props: any) => {
     [
       isBothAllView,
       apiBrandNameId,
-      productsServiceId,
-      medicineServiceId,
       priceRange,
       ratingFilter,
       doshaFilter,
@@ -589,29 +550,25 @@ const CategoryProductsScreen = (props: any) => {
       bothAllServiceHasMoreRef.current = new Map();
       bothAllPageRef.current = 1;
       bothAllServiceIdsRef.current = [];
+      bothAllServiceLockRef.current = null;
       return;
     }
 
     const parsed = JSON.parse(bothAllKey) as {
       brand: string | null;
-      productsServiceId: string | null;
-      medicineServiceId: string | null;
       price: { min_price: number | null; max_price: number | null };
       rating: number | string | null;
       dosha: string | null;
       sort: string | null;
+      nonce?: number;
     };
 
-    const serviceIds = [
-      parsed.productsServiceId,
-      parsed.medicineServiceId,
-    ].filter(Boolean) as string[];
-
-    // Wait until dashboard service ids are known
-    if (!serviceIds.length) {
-      setBothAllLoading(true);
-      return;
+    if (bothAllServiceLockRef.current == null || (parsed.nonce ?? 0) > 0) {
+      const known = [productsServiceId, medicineServiceId].filter(Boolean) as string[];
+      bothAllServiceLockRef.current = known.length ? known : 'open';
     }
+    const locked = bothAllServiceLockRef.current;
+    const serviceIds = locked === 'open' ? [] : locked;
 
     const shared: Record<string, unknown> = {
       page_size: PRODUCT_PAGE_SIZE,
@@ -626,12 +583,13 @@ const CategoryProductsScreen = (props: any) => {
     if (parsed.sort) shared.sort = parsed.sort;
 
     bothAllSharedRef.current = shared;
-    bothAllServiceIdsRef.current = serviceIds;
+    const requestIds = serviceIds.length ? serviceIds : [''];
+    bothAllServiceIdsRef.current = requestIds;
     bothAllSeenRef.current = new Set();
     bothAllPageRef.current = 1;
     bothAllLoadLockRef.current = false;
     const hasMoreMap = new Map<string, boolean>();
-    serviceIds.forEach(id => hasMoreMap.set(id, true));
+    requestIds.forEach(id => hasMoreMap.set(id, true));
     bothAllServiceHasMoreRef.current = hasMoreMap;
 
     let cancelled = false;
@@ -644,7 +602,7 @@ const CategoryProductsScreen = (props: any) => {
       const res = await getProduct({
         ...shared,
         page,
-        service_category_id: serviceId,
+        ...(serviceId ? { service_category_id: serviceId } : {}),
       });
       if (cancelled) return;
       const items = mapBothAllItems(res);
@@ -657,7 +615,7 @@ const CategoryProductsScreen = (props: any) => {
     };
 
     Promise.allSettled(
-      serviceIds.map(serviceId =>
+      requestIds.map(serviceId =>
         fetchServicePage(serviceId, 1).catch(() => {
           if (!cancelled) hasMoreMap.set(serviceId, false);
         }),
@@ -667,11 +625,18 @@ const CategoryProductsScreen = (props: any) => {
       setBothAllLoading(false);
       setBothAllRefreshing(false);
       setBothAllHasMore([...hasMoreMap.values()].some(Boolean));
+    }).catch(() => {
+      if (cancelled) return;
+      setBothAllLoading(false);
+      setBothAllRefreshing(false);
     });
 
     return () => {
       cancelled = true;
     };
+    // Service ids are read once per load. Adding them as deps would refetch
+    // when home categories arrive and make Shop all wait twice.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bothAllKey, mapBothAllItems, appendBothAllItems]);
 
   const loadBothAllMore = useCallback(async () => {
@@ -758,30 +723,14 @@ const CategoryProductsScreen = (props: any) => {
     if (bothAllLoading || bothAllRefreshing) {
       return;
     }
-    const filteredFallback = fallbackCatalog.filter(isCatalogItemPurchasable);
-    seedWishlistCacheFromList(filteredFallback);
-    setProducts(applyWishlistCache(filteredFallback));
+    setProducts([]);
   }, [
     fetchedProducts,
     bothAllProducts,
     bothAllLoading,
     bothAllRefreshing,
     isBothAllView,
-    fallbackCatalog,
   ]);
-
-  useFocusEffect(
-    useCallback(() => {
-      if (!shouldRunThrottled('category-products-focus-refresh', 30_000)) {
-        return;
-      }
-      if (isBothAllView) {
-        setBothAllNonce(n => n + 1);
-        return;
-      }
-      refresh();
-    }, [isBothAllView, refresh]),
-  );
 
   const prevCategoryRef = useRef(selectedCategoryId);
 
@@ -960,6 +909,7 @@ const CategoryProductsScreen = (props: any) => {
 
   const handleRefresh = useCallback(async () => {
     // Keep selected filters — only refresh catalog data
+    bothAllServiceLockRef.current = null;
     productGridRef.current?.scrollToOffset?.({ offset: 0, animated: true });
     refreshTopCategories();
     if (activeCategoryId) {

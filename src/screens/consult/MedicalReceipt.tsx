@@ -229,6 +229,15 @@ const MedicalReceipt = (props: any) => {
                                         </View>
                                     </View>
 
+                                    {!!breakdown.consultationId && (
+                                        <View style={styles.metaBlock}>
+                                            <Text style={styles.label}>Consultation ID</Text>
+                                            <Text style={styles.metaValue} selectable>
+                                                {breakdown.consultationId}
+                                            </Text>
+                                        </View>
+                                    )}
+
                                     <View style={styles.infoRow}>
                                         <View style={styles.infoCol}>
                                             <Text style={styles.label}>Patient Name</Text>

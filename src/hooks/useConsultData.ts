@@ -402,28 +402,17 @@ export const useUpcomingAppointmentsPreview = (
                 setLoading(true);
             }
 
-            // Include in_progress / reschedule so doctor-started calls appear on Home
-            const statusBuckets = [
-                'confirmed',
-                'upcoming',
-                'completed',
-                'in_progress',
-                'reschedule',
-                'rescheduled',
-            ];
-            const responses = await Promise.all(
-                statusBuckets.map(appointment_status =>
-                    _CONSULT_SERVICES
-                        .getConsultHistory({ page: 1, page_size: pageSize, appointment_status })
-                        .catch((e: any) => {
-                            console.log('UPCOMING_PREVIEW_FETCH_ERROR', appointment_status, e);
-                            return null;
-                        }),
-                ),
-            );
+            // One history request. Status is filtered here so Home does not
+            // hit consultation-history once per status.
+            const response = await _CONSULT_SERVICES
+                .getConsultHistory({ page: 1, page_size: pageSize })
+                .catch((e: any) => {
+                    console.log('UPCOMING_PREVIEW_FETCH_ERROR', e);
+                    return null;
+                });
 
             const seen = new Set<string>();
-            const active = responses.flatMap((res: any) => res?.data?.results || [])
+            const active = (response?.data?.results || [])
                 .map((item: any) => normalizeAppointmentListItem(item))
                 .filter((item: any) => {
                     const key = String(item?.appointment_id || item?.consultation_id || '');

@@ -129,17 +129,37 @@ export const normalizePrescriptionPayload = (raw: any) => {
   };
 };
 
+const medicineSequence = (item: any, index: number) => {
+  const raw =
+    item?.sequence ??
+    item?.sort_order ??
+    item?.display_order ??
+    item?.order ??
+    item?.position ??
+    item?.serial_no ??
+    item?.sr_no;
+  const num = Number(raw);
+  return Number.isFinite(num) ? num : index;
+};
+
 export const getMedicineItems = (prescription: any): any[] => {
   if (!prescription) return [];
-  if (Array.isArray(prescription.items)) return prescription.items;
-  if (Array.isArray(prescription.medicines)) return prescription.medicines;
-  if (Array.isArray(prescription.medicine_items)) {
-    return prescription.medicine_items;
-  }
-  if (Array.isArray(prescription.prescribed_medicines)) {
-    return prescription.prescribed_medicines;
-  }
-  return [];
+  const list = Array.isArray(prescription.items)
+    ? prescription.items
+    : Array.isArray(prescription.medicines)
+      ? prescription.medicines
+      : Array.isArray(prescription.medicine_items)
+        ? prescription.medicine_items
+        : Array.isArray(prescription.prescribed_medicines)
+          ? prescription.prescribed_medicines
+          : [];
+  return list
+    .map((item: any, index: number) => ({ item, index }))
+    .sort((a, b) => {
+      const diff = medicineSequence(a.item, a.index) - medicineSequence(b.item, b.index);
+      return diff !== 0 ? diff : a.index - b.index;
+    })
+    .map(row => row.item);
 };
 
 /** "₹1,299.00" / "199" / 199 → number; empty / invalid → null. */

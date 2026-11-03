@@ -51,14 +51,14 @@ const styles = StyleSheet.create({
     paddingTop: 18,
     paddingBottom: 16,
     marginBottom: 14,
-    alignItems: 'center',
+    alignItems: 'flex-start',
   },
   kicker: {
     fontFamily: Fonts.PoppinsSemiBold,
     fontSize: 10,
     letterSpacing: 1.2,
     color: 'rgba(255,255,255,0.78)',
-    textAlign: 'center',
+    textAlign: 'left',
   },
   title: {
     marginTop: 8,
@@ -66,13 +66,13 @@ const styles = StyleSheet.create({
     fontSize: 20,
     lineHeight: 28,
     color: '#FFFFFF',
-    textAlign: 'center',
+    textAlign: 'left',
   },
   tags: {
     marginTop: 14,
     flexDirection: 'row',
     flexWrap: 'wrap',
-    justifyContent: 'center',
+    justifyContent: 'flex-start',
     gap: 8,
   },
   tag: {
@@ -91,7 +91,7 @@ const styles = StyleSheet.create({
   },
   cta: {
     marginTop: 16,
-    alignSelf: 'center',
+    alignSelf: 'flex-start',
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,

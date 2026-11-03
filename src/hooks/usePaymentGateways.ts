@@ -14,6 +14,8 @@ type Options = {
   fallbackGateways?: PaymentGateway[];
 };
 
+const DEFAULT_FALLBACK: PaymentGateway[] = ['cashfree', 'razorpay', 'icici'];
+
 /**
  * Live gateway list from `/payments/customer/payment-gateways/`.
  * Only `status === active` can be selected for payment.
@@ -23,7 +25,12 @@ export const usePaymentGateways = (options?: Options) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const fallbackKey = (options?.fallbackGateways || DEFAULT_FALLBACK).join(',');
+
   const refresh = useCallback(async () => {
+    const fallbackIds = (fallbackKey.split(',').filter(Boolean) as PaymentGateway[]).filter(
+      id => id !== 'icici' || isPayphiNativeLinked(),
+    );
     setLoading(true);
     setError(null);
     try {
@@ -46,7 +53,7 @@ export const usePaymentGateways = (options?: Options) => {
       }
 
       // Empty API → fall back so checkout is not blank
-      const fallback = (options?.fallbackGateways || ['cashfree']).map(
+      const fallback = fallbackIds.map(
         id =>
           ({
             id,
@@ -59,7 +66,7 @@ export const usePaymentGateways = (options?: Options) => {
       return fallback;
     } catch (e: any) {
       setError(e?.message || 'Unable to load payment gateways');
-      const fallback = (options?.fallbackGateways || ['cashfree']).map(
+      const fallback = fallbackIds.map(
         id =>
           ({
             id,
@@ -73,7 +80,7 @@ export const usePaymentGateways = (options?: Options) => {
     } finally {
       setLoading(false);
     }
-  }, [options?.fallbackGateways]);
+  }, [fallbackKey]);
 
   useEffect(() => {
     void refresh();

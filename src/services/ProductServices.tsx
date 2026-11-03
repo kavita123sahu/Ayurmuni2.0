@@ -539,20 +539,9 @@ export const getHealthCategories = async (
             : {}),
         };
 
-    const response = await apiClient(buildHealthCategoryQuery(params), {
+    return apiClient(buildHealthCategoryQuery(params), {
       method: 'GET',
     });
-
-    if (response?.success !== false) {
-      return response;
-    }
-
-    const legacyId = params.id || params.service_category_id;
-    const legacyQuery = legacyId
-      ? `user/health-categories/?category_id=${encodeURIComponent(String(legacyId))}`
-      : 'user/health-categories/';
-
-    return apiClient(legacyQuery, { method: 'GET' }, false);
   } catch (error) {
     throw error;
   }

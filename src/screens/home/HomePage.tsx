@@ -46,7 +46,7 @@
 
 //   noText: {
 
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -62,7 +62,6 @@ import {
 import { Dimensions } from 'react-native';
 import * as _PROFILE_SERVICES from '../../services/ProfileServices';
 import { Colors } from '../../common/Colors';
-import { shouldRunThrottled } from '../../utils/fetchThrottle';
 import { SCREEN_THEME } from '../../constants/screenTheme';
 import HomeHeader from '../../components/HomeHeader';
 import SearchBar from '../../components/SearchBar';
@@ -126,7 +125,6 @@ let lastAssessmentProfileKey: string | null = null;
 
 const HomePage: React.FC = (props: any) => {
 
-  const hasFetched = useRef(false);
   const [refreshing, setRefreshing] = useState(false);
   const {
     images: bannerImages,
@@ -150,7 +148,6 @@ const HomePage: React.FC = (props: any) => {
     YogaSession,
     dietProducts,
     loadingDiet,
-    fetchDietPlans,
     fetchCustomerData,
 
     loadingCategories,
@@ -159,7 +156,6 @@ const HomePage: React.FC = (props: any) => {
     loadingDoctors,
     refreshHomeData
   } = useHomeData();
-  console.log("storeProductsstoreProductsstoreProductsstoreProducts", storeProducts)
 
   const hasSelectedDiseases = useMemo(() => {
     const ids = Array.isArray(customerData?.health_disease_ids)
@@ -279,28 +275,11 @@ const HomePage: React.FC = (props: any) => {
 
   useFocusEffect(
     useCallback(() => {
-      if (shouldRunThrottled('home-diet-doctors', 60_000)) {
-        refreshActiveDiet();
-        refreshVisitedDoctors();
-      }
-    }, [refreshActiveDiet, refreshVisitedDoctors]),
-  );
-
-  useFocusEffect(
-    useCallback(() => {
       const timer = setTimeout(() => {
         promptLocationOnHome();
       }, 600);
-
-      // Only load diet once when empty — avoid refetch while Checkout is open above Home
-      if (!dietProducts?.length) {
-        fetchDietPlans(false);
-      }
-
       return () => clearTimeout(timer);
-      // Intentionally omit dietProducts?.length — avoids re-running when diet fills
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [promptLocationOnHome, fetchDietPlans]),
+    }, [promptLocationOnHome]),
   );
 
   // Re-evaluate Join banner when the 5‑min window / end time crosses
@@ -326,38 +305,6 @@ const HomePage: React.FC = (props: any) => {
     });
     return () => sub.remove();
   }, [refreshPreview]);
-
-  useFocusEffect(
-    useCallback(() => {
-      if (shouldRunThrottled('home-appointments-preview', 45_000)) {
-        refreshPreview();
-      }
-      // Keep prakriti / medical progress header in sync after assessments
-      if (shouldRunThrottled('home-header-focus', 12_000)) {
-        fetchCustomerData?.(true);
-      }
-      // Refresh catalogs on tab focus so new / inactive products & vendors update
-      const noProducts =
-        !(storeProducts?.length > 0) && !(medicineProducts?.length > 0);
-      if (
-        noProducts
-          ? shouldRunThrottled('home-catalog-empty-refresh', 20_000)
-          : shouldRunThrottled('home-catalog-focus-refresh', 30_000)
-      ) {
-        refreshHomeData();
-      }
-      if (shouldRunThrottled('home-brands-focus-refresh', 45_000)) {
-        refreshBrands();
-      }
-    }, [
-      refreshPreview,
-      fetchCustomerData,
-      refreshHomeData,
-      refreshBrands,
-      storeProducts?.length,
-      medicineProducts?.length,
-    ]),
-  );
 
   const onRefresh = useCallback(async () => {
     try {
@@ -485,14 +432,6 @@ const HomePage: React.FC = (props: any) => {
   const closePrakritiModal = useCallback(() => {
     setShowPrakritiModal(false);
     setActiveHomeModal('none');
-  }, []);
-
-  useEffect(() => {
-    if (hasFetched.current) return;
-
-    hasFetched.current = true;
-
-    refreshHomeData();
   }, []);
 
   const ComingSoonStrip = ({

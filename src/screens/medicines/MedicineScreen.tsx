@@ -16,8 +16,7 @@ import SectionHeader from '../../components/SectionHeader';
 import ActionCards from '../../components/ActionCards';
 import BrandList from '../../components/BrandList';
 import ProductCard from '../../components/ProductCard';
-import { useFocusEffect, useNavigation } from '@react-navigation/native';
-import { shouldRunThrottled } from '../../utils/fetchThrottle';
+import { useNavigation } from '@react-navigation/native';
 import { Colors } from '../../common/Colors';
 import { SCREEN_THEME } from '../../constants/screenTheme';
 import { useHomeData } from '../../hooks/UseHomeData';
@@ -167,13 +166,6 @@ const MedicineScreen = (props: any) => {
     refreshBrands,
     refreshHealthConcerns,
   ]);
-
-  useFocusEffect(
-    useCallback(() => {
-      if (!shouldRunThrottled('medicine-tab-focus-refresh', 30_000)) return;
-      void onRefresh();
-    }, [onRefresh]),
-  );
 
   const actionItems: ActionItem[] = useMemo(
     () => [

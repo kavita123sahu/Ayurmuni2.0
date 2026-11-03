@@ -474,38 +474,45 @@ export const openCashfreePayment = (
 };
 
 /**
- * Exact verify-payment body (no payment_gateway, no session_ ids):
- * {
- *   payment_id, gateway_order_id,
- *   gateway_payment_id: cf_payment_id,
- *   gateway_signature: cf_payment_id
- * }
+ * Verify body after Cashfree checkout.
+ * gateway_order_id is the Cashfree order id. gateway_payment_id is included
+ * only when it is the numeric cf_payment_id. The order id is not a payment id;
+ * sending it makes verify-payment return "Payment verification failed."
  */
 export const buildCashfreeVerifyPayload = (args: {
   paymentId: string;
   orderId: string;
-  gatewayPaymentId: string;
+  gatewayPaymentId?: string;
   gatewaySignature?: string;
 }): {
   payment_id: string;
   gateway_order_id: string;
-  gateway_payment_id: string;
-  gateway_signature: string;
+  gateway_payment_id?: string;
+  gateway_signature?: string;
 } => {
   const orderId = str(args.orderId);
-  const cfPaymentId = str(args.gatewayPaymentId);
-  if (!isCashfreePaymentId(cfPaymentId)) {
+  const paymentId = str(args.paymentId);
+  if (!paymentId || !orderId) {
     throw new Error(
-      'Cashfree cf_payment_id missing. Cannot verify without numeric gateway_payment_id.',
+      'Cashfree verify needs payment_id and the Cashfree order id.',
     );
   }
 
+  const cfPaymentId = isCashfreePaymentId(args.gatewayPaymentId)
+    ? str(args.gatewayPaymentId)
+    : '';
+  const signature = isCashfreePaymentId(args.gatewaySignature)
+    ? str(args.gatewaySignature)
+    : cfPaymentId;
+
   return {
-    payment_id: str(args.paymentId),
+    payment_id: paymentId,
     gateway_order_id: orderId,
-    gateway_payment_id: cfPaymentId,
-    gateway_signature: isCashfreePaymentId(args.gatewaySignature)
-      ? str(args.gatewaySignature)
-      : cfPaymentId,
+    ...(cfPaymentId
+      ? {
+          gateway_payment_id: cfPaymentId,
+          gateway_signature: signature,
+        }
+      : {}),
   };
 };

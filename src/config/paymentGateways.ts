@@ -190,6 +190,30 @@ export const mapCustomerPaymentGateways = (
   return ordered;
 };
 
+/**
+ * Package checkout should offer every gateway this app can charge with.
+ * API rows win when present. Missing gateways stay selectable.
+ */
+export const ensurePackageGateways = (
+  rows: PaymentGatewayAvailability[],
+  opts?: { payphiNativeLinked?: boolean },
+): PaymentGatewayAvailability[] => {
+  const byId = new Map(rows.map(row => [row.id, row]));
+  return GATEWAY_ORDER.flatMap(id => {
+    const existing = byId.get(id);
+    if (existing) return [existing];
+    if (id === 'icici' && !opts?.payphiNativeLinked) return [];
+    return [
+      {
+        id,
+        status: 'active',
+        enabled: true,
+        statusLabel: 'Available',
+      },
+    ];
+  });
+};
+
 /** Active gateway ids only (for payment start). */
 export const getActiveGatewayIds = (
   rows: PaymentGatewayAvailability[],

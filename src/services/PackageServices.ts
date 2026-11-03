@@ -7,6 +7,16 @@ import { apiClient } from './APIconfig';
 export type PackageButtonAction = 'book_consultation' | 'purchase_package';
 export type PackagePurchaseType = 'open_plan' | 'prepaid_package';
 
+/** Policy fees on a plan or on packages/purchase/. Rates are not fixed in the app. */
+export type PackageFees = {
+  selling_price?: string | number | null;
+  gst_percent?: string | number | null;
+  gst_amount?: string | number | null;
+  platform_fee_percent?: string | number | null;
+  platform_fee?: string | number | null;
+  total_payable_amount?: string | number | null;
+};
+
 /** GET packages/plans/ → results[] */
 export type PackagePlan = {
   id: string;
@@ -27,6 +37,12 @@ export type PackagePlan = {
   billing_interval: number | null;
   billing_cycle_count: number | null;
   benefits: { includes: string[] };
+  fees?: PackageFees | null;
+  gst_percent?: string | number | null;
+  gst_amount?: string | number | null;
+  platform_fee_percent?: string | number | null;
+  platform_fee?: string | number | null;
+  total_payable_amount?: string | number | null;
 };
 
 export type PackagePurchase = {

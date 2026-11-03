@@ -15,6 +15,7 @@ import LinearGradient from 'react-native-linear-gradient';
 import { Fonts } from '../../common/Fonts';
 import TablerIcon, { TablerIconName } from '../TablerIcon';
 import { RupeeAmount } from '../../utils/currencyUtils';
+import PackagePriceSummary, { readPackageFees } from './PackagePriceSummary';
 import type { PackagePlan } from '../../services/PackageServices';
 import {
   PLAN_GOLD,
@@ -64,7 +65,9 @@ export default function PackagePlanDetailSheet({
   const discount = getDiscountPercent(plan);
   const benefits = plan.benefits?.includes ?? [];
   const original = toAmount(plan.original_price);
-  const selling = toAmount(plan.selling_price);
+  const fees = readPackageFees(plan);
+  const selling = toAmount(fees?.sellingPrice ?? plan.selling_price);
+  const payable = toAmount(fees?.totalPayable ?? plan.selling_price);
   const saving = original > selling ? original - selling : 0;
   const consultCredits = getCatalogConsultCredits(plan);
 
@@ -160,37 +163,46 @@ export default function PackagePlanDetailSheet({
           ) : null}
 
           <Text style={styles.section}>Price details</Text>
-          <View style={styles.priceBox}>
-            <View style={styles.priceRow}>
-              <Text style={styles.priceLabel}>Selling price</Text>
-              <RupeeAmount value={plan.selling_price} style={styles.priceValue} />
-            </View>
-            {saving > 0 ? (
+          {fees ? (
+            <PackagePriceSummary source={plan} totalLabel="You pay" />
+          ) : (
+            <View style={styles.priceBox}>
               <View style={styles.priceRow}>
-                <Text style={styles.priceLabel}>You save ({discount}%)</Text>
-                <RupeeAmount value={saving} style={[styles.priceValue, styles.green]} />
+                <Text style={styles.priceLabel}>Selling price</Text>
+                <RupeeAmount value={plan.selling_price} style={styles.priceValue} decimals={2} />
               </View>
-            ) : null}
-            {original > selling ? (
-              <View style={styles.priceRow}>
-                <Text style={styles.priceLabel}>Original price</Text>
-                <RupeeAmount
-                  value={plan.original_price}
-                  style={[styles.priceValue, styles.strike]}
-                />
+              <View style={[styles.priceRow, styles.totalRow]}>
+                <Text style={styles.totalLabel}>You pay</Text>
+                <RupeeAmount value={plan.selling_price} style={styles.totalValue} decimals={2} />
               </View>
-            ) : null}
-            <View style={[styles.priceRow, styles.totalRow]}>
-              <Text style={styles.totalLabel}>You pay</Text>
-              <RupeeAmount value={plan.selling_price} style={styles.totalValue} />
             </View>
-          </View>
+          )}
+          {saving > 0 || original > selling ? (
+            <View style={styles.saveBox}>
+              {original > selling ? (
+                <View style={styles.priceRow}>
+                  <Text style={styles.priceLabel}>Original price</Text>
+                  <RupeeAmount
+                    value={plan.original_price}
+                    style={[styles.priceValue, styles.strike]}
+                    decimals={2}
+                  />
+                </View>
+              ) : null}
+              {saving > 0 ? (
+                <View style={styles.priceRow}>
+                  <Text style={styles.priceLabel}>You save ({discount}%)</Text>
+                  <RupeeAmount value={saving} style={[styles.priceValue, styles.green]} decimals={2} />
+                </View>
+              ) : null}
+            </View>
+          ) : null}
         </ScrollView>
 
         <View style={styles.footer}>
           <View style={styles.footerPrice}>
             <View style={styles.footerPriceRow}>
-              <RupeeAmount value={plan.selling_price} style={styles.footerAmount} decimals={false} />
+              <RupeeAmount value={payable || plan.selling_price} style={styles.footerAmount} decimals={2} />
               {original > selling ? (
                 <RupeeAmount
                   value={plan.original_price}
@@ -373,6 +385,11 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 19,
     color: '#34403C',
+  },
+  saveBox: {
+    marginTop: 8,
+    gap: 8,
+    paddingHorizontal: 4,
   },
   priceBox: {
     backgroundColor: '#F7FAF9',

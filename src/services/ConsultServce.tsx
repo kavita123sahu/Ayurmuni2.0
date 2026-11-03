@@ -694,16 +694,17 @@ export const getConsultationFeeQuote = async (
 
 /**
  * POST payments/customer/consultation/payment/verify-payment/
- * Cashfree body (exact):
+ * Cashfree body:
  *   { payment_id, gateway_order_id, gateway_payment_id, gateway_signature }
- * gateway_payment_id + gateway_signature = Cashfree cf_payment_id (numeric).
- * Do not send payment_gateway on verify.
+ * gateway_payment_id is the numeric cf_payment_id when the checkout returns it.
+ * Android checkout often returns only the Cashfree order id; the server then
+ * confirms that order with the Cashfree secret. Do not send payment_gateway.
  */
 export type VerifyConsultationPaymentPayload = {
     payment_id: string;
     gateway_order_id: string;
-    gateway_payment_id: string;
-    gateway_signature: string;
+    gateway_payment_id?: string;
+    gateway_signature?: string;
 };
 
 export const verifyConsultationPayment = async (data: VerifyConsultationPaymentPayload) => {
@@ -711,9 +712,11 @@ export const verifyConsultationPayment = async (data: VerifyConsultationPaymentP
         const body: Record<string, string> = {
             payment_id: String(data.payment_id ?? '').trim(),
             gateway_order_id: String(data.gateway_order_id ?? '').trim(),
-            gateway_payment_id: String(data.gateway_payment_id ?? '').trim(),
-            gateway_signature: String(data.gateway_signature ?? '').trim(),
         };
+        const gatewayPaymentId = String(data.gateway_payment_id ?? '').trim();
+        const gatewaySignature = String(data.gateway_signature ?? '').trim();
+        if (gatewayPaymentId) body.gateway_payment_id = gatewayPaymentId;
+        if (gatewaySignature) body.gateway_signature = gatewaySignature;
 
         console.log('CONSULT_VERIFY_PAYLOAD =>', JSON.stringify(body));
         const response = await apiClient('payments/customer/consultation/payment/verify-payment/', {

@@ -16,6 +16,7 @@ import {
 } from '../services/RazorpayService';
 import { getPayerDetails } from '../services/PayerDetails';
 import { requireAuth } from '../services/guestAuth';
+import { navigationRef } from '../navigation/navigationRef';
 import { showSuccessToast } from '../config/Key';
 import { Colors } from '../common/Colors';
 import type { PaymentGateway } from '../config/paymentGateways';
@@ -210,7 +211,14 @@ export const usePackagePurchase = (navigation: any) => {
 
         invalidateActivePlans();
         showSuccessToast(verify?.message || 'Care plan activated', 'success');
-        navigation.navigate('MyPlansScreen', { highlightId: purchase.id });
+        if (navigationRef.isReady()) {
+          navigationRef.navigate('HomeStack', {
+            screen: 'MyPlansScreen',
+            params: { highlightId: purchase.id },
+          });
+        } else {
+          navigation.navigate('MyPlansScreen', { highlightId: purchase.id });
+        }
       } catch (error: any) {
         console.log('PACKAGE_PURCHASE_ERROR =>', error);
         showSuccessToast(error?.message || 'Something went wrong. Please try again.', 'error');

@@ -10,18 +10,27 @@ export type HealthCategoryItem = ReturnType<typeof mapProductCategory>;
 export const useHealthCategories = (
   parentId?: string | null,
   serviceCategoryId?: string | null,
+  options?: { enabled?: boolean },
 ) => {
+  const enabled = options?.enabled !== false;
   const [categories, setCategories] = useState<HealthCategoryItem[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(enabled);
   const [refreshing, setRefreshing] = useState(false);
   const requestIdRef = useRef(0);
 
   const loadCategories = useCallback(
-    async (options?: { refresh?: boolean }) => {
+    async (loadOptions?: { refresh?: boolean }) => {
+      if (!enabled) {
+        setCategories([]);
+        setLoading(false);
+        setRefreshing(false);
+        return;
+      }
+
       const reqId = ++requestIdRef.current;
 
       try {
-        if (!options?.refresh) {
+        if (!loadOptions?.refresh) {
           setLoading(true);
         }
 
@@ -86,7 +95,7 @@ export const useHealthCategories = (
         }
       }
     },
-    [parentId, serviceCategoryId],
+    [enabled, parentId, serviceCategoryId],
   );
 
   useEffect(() => {
@@ -94,9 +103,10 @@ export const useHealthCategories = (
   }, [loadCategories]);
 
   const refresh = useCallback(() => {
+    if (!enabled) return;
     setRefreshing(true);
     loadCategories({ refresh: true });
-  }, [loadCategories]);
+  }, [enabled, loadCategories]);
 
   return {
     categories,
