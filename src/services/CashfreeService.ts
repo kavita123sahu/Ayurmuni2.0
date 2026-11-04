@@ -118,6 +118,36 @@ const pickCfPaymentIdFromMeta = (meta: any): string => {
   return pickCfPaymentId(meta);
 };
 
+/** Prefer the environment the backend created the order in. */
+const pickCashfreeEnvironment = (data: any): 'SANDBOX' | 'PRODUCTION' => {
+  const nested =
+    (data?.cashfree && typeof data.cashfree === 'object' && data.cashfree) ||
+    {};
+  const raw = str(
+    nested.environment ??
+      nested.env ??
+      nested.mode ??
+      data?.cashfree_environment ??
+      data?.cf_environment,
+  ).toUpperCase();
+  if (raw === 'PRODUCTION' || raw === 'PROD' || raw === 'LIVE') {
+    return 'PRODUCTION';
+  }
+  if (raw === 'SANDBOX' || raw === 'TEST') {
+    return 'SANDBOX';
+  }
+  const appId = str(
+    nested.app_id ??
+      nested.client_id ??
+      nested.x_client_id ??
+      data?.cashfree_app_id ??
+      data?.x_client_id,
+  );
+  if (appId.startsWith('TEST')) return 'SANDBOX';
+  if (appId) return 'PRODUCTION';
+  return getCashfreeCredentials().environment;
+};
+
 const pickCashfreeSecretFromBookSlot = (data: any): {
   appId: string;
   appSecret: string;
@@ -186,7 +216,7 @@ export const parseCashfreeCheckout = (
   return {
     paymentSessionId,
     orderId,
-    environment: getCashfreeCredentials().environment,
+    environment: pickCashfreeEnvironment(data),
     paymentId: str(data?.payment_id) || undefined,
     appId: creds.appId || undefined,
     appSecret: creds.appSecret || undefined,
@@ -201,6 +231,7 @@ export const resolveCashfreeCheckout = async (
     logCf('using book-slot session', {
       orderId: fromApi.orderId,
       paymentId: fromApi.paymentId,
+      env: fromApi.environment,
       hasAppSecret: Boolean(fromApi.appSecret),
     });
     return fromApi;
@@ -304,8 +335,7 @@ export const openCashfreePayment = (
   } = require('cashfree-pg-api-contract');
 
   const env =
-    session.environment === 'PRODUCTION' ||
-    CASHFREE_ENVIRONMENT === 'PRODUCTION'
+    session.environment === 'PRODUCTION'
       ? CFEnvironment.PRODUCTION
       : CFEnvironment.SANDBOX;
 

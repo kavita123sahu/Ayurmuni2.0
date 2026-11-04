@@ -1079,7 +1079,7 @@ const RazorpayScreen = ({ route, navigation }: any) => {
             }
 
             // ── Cashfree SDK ───────────────────────────────────────
-            // book-slot → (session from API or SANDBOX create) → doWebPayment → verify
+            // book-slot → payment_session_id → doWebPayment → verify
             if (apiGateway === 'cashfree') {
                 let cfSession;
                 try {
