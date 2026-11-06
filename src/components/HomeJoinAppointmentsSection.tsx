@@ -90,20 +90,20 @@ const HomeJoinAppointmentsSection = ({
   const joinableAppointment = useMemo(() => {
     const bannerSource = bannerCandidates;
     const joinable = getJoinableAppointment(bannerSource, 5);
-    console.log(
-      'HOME_JOIN_BANNER =>',
-      joinable
-        ? `${joinable.item.doctorName} ${joinable.item.date} ${joinable.item.time} live=${joinable.isLive}`
-        : 'none',
-      '| upcoming =>',
-      bannerSource.map(item => ({
-        date: item?.date,
-        time: item?.time,
-        end: item?.endTime,
-        status: item?.status,
-        call: item?.call_status,
-      })),
-    );
+    // console.log(
+    //   'HOME_JOIN_BANNER =>',
+    //   joinable
+    //     ? `${joinable.item.doctorName} ${joinable.item.date} ${joinable.item.time} live=${joinable.isLive}`
+    //     : 'none',
+    //   '| upcoming =>',
+    //   bannerSource.map(item => ({
+    //     date: item?.date,
+    //     time: item?.time,
+    //     end: item?.endTime,
+    //     status: item?.status,
+    //     call: item?.call_status,
+    //   })),
+    // );
     return joinable;
     // tick re-checks the ≤5 min join window without refreshing the whole home feed
     // eslint-disable-next-line react-hooks/exhaustive-deps

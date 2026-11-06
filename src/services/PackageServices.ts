@@ -68,6 +68,8 @@ export type PackagePurchase = {
   starts_at: string | null;
   expires_at: string | null;
   paid_at: string | null;
+  payment_gateway?: string | null;
+  gateway_order_id?: string | null;
   razorpay_order_id: string | null;
   razorpay_payment_id: string | null;
   razorpay_subscription_id: string | null;
@@ -123,8 +125,18 @@ export const isPlanExpired = (plan: Pick<MyPlan, 'status' | 'expires_at'>) => {
 
 export type PackageCheckout = {
   type: 'order' | 'subscription';
+  payment_gateway?: string | null;
+  gateway_order_id?: string | null;
   razorpay_order_id: string | null;
   razorpay_subscription_id: string | null;
+  cashfree_order_id?: string | null;
+  payment_session_id?: string | null;
+  cashfree?: {
+    order_id?: string | null;
+    payment_session_id?: string | null;
+    environment?: 'SANDBOX' | 'PRODUCTION' | string | null;
+  } | null;
+  icici?: Record<string, unknown> | null;
 };
 
 export type PurchasePackagePayload = {

@@ -19,8 +19,8 @@ export const BaseUrl = {
 
     //"https://ayurmuni-backend.onrender.com/"
     //"https://ayurmunistaging.aimantra.info"
-    base_url: "https://scarce-derby-voice.ngrok-free.dev/",
-    //https://ayurmuniproduction.aimantra.info
+    // base_url: "https://scarce-derby-voice.ngrok-free.dev/",
+    base_url: "https://ayurmuniproduction.aimantra.info/",
     //https://ranged-reimburse-pentagram.ngrok-free.dev
 };
 

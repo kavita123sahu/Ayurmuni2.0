@@ -1,4 +1,4 @@
-import React, { memo, useEffect, useMemo, useState } from 'react';
+import React, { memo, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Modal,
@@ -13,8 +13,7 @@ import { Fonts } from '../../common/Fonts';
 import TablerIcon from '../TablerIcon';
 import PaymentGatewaySelector from '../payment/PaymentGatewaySelector';
 import { usePaymentGateways } from '../../hooks/usePaymentGateways';
-import { ensurePackageGateways, type PaymentGateway } from '../../config/paymentGateways';
-import { isPayphiNativeLinked } from '../../services/PayphiService';
+import type { PaymentGateway } from '../../config/paymentGateways';
 import type { PackagePlan } from '../../services/PackageServices';
 import PackagePriceSummary, { readPackageFees } from './PackagePriceSummary';
 import { RupeeAmount } from '../../utils/currencyUtils';
@@ -36,16 +35,7 @@ const PackagePaymentGatewaySheet = ({
   onConfirm,
 }: Props) => {
   const insets = useSafeAreaInsets();
-  const { gateways, defaultGateway, loading } = usePaymentGateways({
-    fallbackGateways: ['cashfree', 'razorpay', 'icici'],
-  });
-  const gatewayOptions = useMemo(
-    () =>
-      ensurePackageGateways(gateways, {
-        payphiNativeLinked: isPayphiNativeLinked(),
-      }),
-    [gateways],
-  );
+  const { gateways, defaultGateway, loading } = usePaymentGateways();
   const [selected, setSelected] = useState<PaymentGateway>(defaultGateway || 'cashfree');
 
   useEffect(() => {
@@ -85,7 +75,7 @@ const PackagePaymentGatewaySheet = ({
             <ActivityIndicator style={{ marginVertical: 20 }} color={Colors.primaryColor} />
           ) : (
             <PaymentGatewaySelector
-              options={gatewayOptions}
+              options={gateways}
               selected={selected}
               onSelect={setSelected}
               disabled={processing}

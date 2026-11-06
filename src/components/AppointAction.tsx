@@ -72,7 +72,7 @@ const AppointmentActions = ({
     String(call_status || '').toLowerCase() === 'in_progress';
   const showJoinCall = Boolean(canJoin);
 
-  if (showJoinCall) {
+  if (showJoinCall && appointmentStatus === 'confirmed') {
     return (
       <TouchableOpacity
         style={styles.standaloneWrap}

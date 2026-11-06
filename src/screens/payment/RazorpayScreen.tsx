@@ -1832,7 +1832,7 @@ const RazorpayScreen = ({ route, navigation }: any) => {
                                             <Text style={styles.totalLabel}>
                                                 Total payable
                                             </Text>
-                                            <View style={styles.secureRow}>
+                                            {/* <View style={styles.secureRow}>
                                                 <TablerIcon
                                                     name="shield"
                                                     size={12}
@@ -1841,7 +1841,7 @@ const RazorpayScreen = ({ route, navigation }: any) => {
                                                 <Text style={styles.secureText}>
                                                     Razorpay secure
                                                 </Text>
-                                            </View>
+                                            </View> */}
                                         </View>
                                         <RupeeAmount
                                             value={totalAmount}

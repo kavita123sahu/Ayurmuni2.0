@@ -118,28 +118,43 @@ const pickCfPaymentIdFromMeta = (meta: any): string => {
   return pickCfPaymentId(meta);
 };
 
-/** Prefer the environment the backend created the order in. */
-const pickCashfreeEnvironment = (data: any): 'SANDBOX' | 'PRODUCTION' => {
-  const nested =
-    (data?.cashfree && typeof data.cashfree === 'object' && data.cashfree) ||
-    {};
-  const raw = str(
-    nested.environment ??
-      nested.env ??
-      nested.mode ??
-      data?.cashfree_environment ??
-      data?.cf_environment,
-  ).toUpperCase();
+const readCashfreeEnvironment = (
+  value: unknown,
+): 'SANDBOX' | 'PRODUCTION' | null => {
+  const raw = str(value).toUpperCase();
   if (raw === 'PRODUCTION' || raw === 'PROD' || raw === 'LIVE') {
     return 'PRODUCTION';
   }
-  if (raw === 'SANDBOX' || raw === 'TEST') {
-    return 'SANDBOX';
+  if (raw === 'SANDBOX' || raw === 'TEST') return 'SANDBOX';
+  return null;
+};
+
+/**
+ * Environment must match the Cashfree account that created this session.
+ * Package purchase nests it at checkout.cashfree.environment.
+ * Consult / order may put it on cashfree or omit it (app default).
+ */
+const pickCashfreeEnvironment = (data: any): 'SANDBOX' | 'PRODUCTION' => {
+  const checkout =
+    data?.checkout && typeof data.checkout === 'object' ? data.checkout : {};
+  const nodes = [data?.cashfree, checkout?.cashfree, checkout, data];
+  for (const node of nodes) {
+    if (!node || typeof node !== 'object') continue;
+    const env = readCashfreeEnvironment(
+      node.environment ??
+        node.env ??
+        node.mode ??
+        node.cashfree_environment ??
+        node.cf_environment,
+    );
+    if (env) return env;
   }
+
   const appId = str(
-    nested.app_id ??
-      nested.client_id ??
-      nested.x_client_id ??
+    data?.cashfree?.app_id ??
+      data?.cashfree?.client_id ??
+      checkout?.cashfree?.app_id ??
+      checkout?.cashfree?.client_id ??
       data?.cashfree_app_id ??
       data?.x_client_id,
   );
@@ -187,9 +202,14 @@ export const isCashfreeNativeLinked = (): boolean => {
 export const parseCashfreeCheckout = (
   data: any,
 ): CashfreeCheckoutSession | null => {
+  const checkout =
+    data?.checkout && typeof data.checkout === 'object' ? data.checkout : {};
   const nested =
     (data?.cashfree && typeof data.cashfree === 'object' && data.cashfree) ||
-    (data?.checkout && typeof data.checkout === 'object' && data.checkout) ||
+    (checkout?.cashfree &&
+      typeof checkout.cashfree === 'object' &&
+      checkout.cashfree) ||
+    checkout ||
     {};
 
   const paymentSessionId = str(
@@ -202,9 +222,11 @@ export const parseCashfreeCheckout = (
 
   const orderId = str(
     data?.gateway_order_id ??
+      checkout?.gateway_order_id ??
       nested.order_id ??
       nested.cf_order_id ??
       nested.cashfree_order_id ??
+      checkout?.cashfree_order_id ??
       data?.cashfree_order_id ??
       data?.cf_order_id ??
       data?.order_id,
@@ -250,6 +272,7 @@ export const fetchCashfreeCfPaymentId = async (args: {
   orderId: string;
   appId?: string;
   appSecret?: string;
+  environment?: 'SANDBOX' | 'PRODUCTION';
 }): Promise<string> => {
   const cfg = getCashfreeCredentials();
   const orderId = str(args.orderId);
@@ -265,8 +288,9 @@ export const fetchCashfreeCfPaymentId = async (args: {
     return '';
   }
 
+  const environment = args.environment || CASHFREE_ENVIRONMENT;
   const base =
-    CASHFREE_ENVIRONMENT === 'PRODUCTION'
+    environment === 'PRODUCTION'
       ? 'https://api.cashfree.com/pg'
       : 'https://sandbox.cashfree.com/pg';
 
@@ -307,6 +331,7 @@ export const resolveCashfreeCfPaymentId = async (args: {
   appId?: string;
   appSecret?: string;
   hintPaymentId?: string;
+  environment?: 'SANDBOX' | 'PRODUCTION';
 }): Promise<string> => {
   if (isCashfreePaymentId(args.hintPaymentId)) {
     return str(args.hintPaymentId);
@@ -315,6 +340,7 @@ export const resolveCashfreeCfPaymentId = async (args: {
     orderId: args.orderId,
     appId: args.appId,
     appSecret: args.appSecret,
+    environment: args.environment,
   });
 };
 
@@ -391,6 +417,7 @@ export const openCashfreePayment = (
           orderId,
           appId: session.appId || cfg.appId,
           appSecret: session.appSecret || cfg.appSecret,
+          environment: session.environment,
         });
       }
 
