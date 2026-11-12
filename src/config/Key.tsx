@@ -11,7 +11,7 @@ import {
 // };
 
 export const BaseUrl = {
-    // base_url: "https://ayurmuni.aimantra.info/"
+    base_url: "https://ayurmuni.aimantra.info/"
     // https://aghast-cognition-earflap.ngrok-free.dev/
     // https://6057-203-110-81-106.ngrok-free.app/ 
     // https://6057-203-110-81-106.ngrok-free.app/
@@ -20,7 +20,7 @@ export const BaseUrl = {
     //"https://ayurmuni-backend.onrender.com/"
     //"https://ayurmunistaging.aimantra.info"
     // base_url: "https://scarce-derby-voice.ngrok-free.dev/",
-    base_url: "https://ayurmuniproduction.aimantra.info/",
+    // base_url: "https://ayurmuniproduction.aimantra.info/",
     //https://ranged-reimburse-pentagram.ngrok-free.dev
 };
 
