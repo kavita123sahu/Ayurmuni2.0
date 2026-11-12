@@ -725,11 +725,11 @@ const DoctorProfile = ({ navigation, route }: any) => {
                         style={styles.packageLink}
                         onPress={() => navigation.navigate('PackagesScreen')}
                     >
-                        <TablerIcon name="certificate" size={14} color="#F6D365" />
+                        <TablerIcon name="certificate" size={14} color="#fff" />
                         <Text style={styles.packageLinkText}>
                           Save with Care Plans — view packages
                         </Text>
-                        <TablerIcon name="chevron-right" size={14} color="#F6D365" />
+                        <TablerIcon name="chevron-right" size={14} color="#fff" />
                     </TouchableOpacity>
                 </LinearGradient>
 
@@ -1186,7 +1186,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         gap: 6,
         alignSelf: 'stretch',
-        backgroundColor: 'rgba(246,211,101,0.14)',
+        backgroundColor: Colors.primaryColor,
         borderRadius: 10,
         paddingHorizontal: 12,
         paddingVertical: 8,
@@ -1195,7 +1195,7 @@ const styles = StyleSheet.create({
         flex: 1,
         fontSize: 12,
         fontFamily: Fonts.PoppinsMedium,
-        color: '#F6D365',
+        color: '#fff',
         includeFontPadding: false,
     },
 

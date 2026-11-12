@@ -195,7 +195,7 @@ const HomeCategory = ({ data = [], navigation, sticky = false }: Props) => {
     ({ item }: { item: Category }) => (
       <CategoryTile
         item={item}
-        active={activeId === item.id}
+        active={false}
         onPress={() => handlePress(item)}
       />
     ),
