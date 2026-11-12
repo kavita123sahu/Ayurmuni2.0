@@ -350,7 +350,11 @@ export const resolveCashfreeCfPaymentId = async (args: {
  */
 export const openCashfreePayment = (
   session: CashfreeCheckoutSession,
-  opts?: { mode?: 'web' | 'upi_intent' },
+  opts?: {
+    mode?: 'web' | 'upi_intent';
+    /** Fires as soon as checkout closes, before payment-id lookup. */
+    onReturned?: (status: CashfreePaymentResult['status']) => void;
+  },
 ): Promise<CashfreePaymentResult> => {
   const { CFPaymentGatewayService } = require('react-native-cashfree-pg-sdk');
   const {
@@ -401,6 +405,13 @@ export const openCashfreePayment = (
     ) => {
       if (settled) return;
       settled = true;
+
+      // Checkout is visible again before cf_payment_id lookup finishes.
+      try {
+        opts?.onReturned?.(result.status);
+      } catch {
+        // ignore
+      }
 
       const orderId = str(result.orderId) || session.orderId;
       let cfPaymentId =
