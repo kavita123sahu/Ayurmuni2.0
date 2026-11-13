@@ -15,6 +15,7 @@
  * }
  *
  * COD also sends payment_method: "cash".
+ * Prepaid online also sends payment_gateway: "cashfree" | "razorpay" | "icici".
  * Do NOT send coupon_discount on place-order (server computes it).
  */
 
@@ -30,6 +31,8 @@ export type OrderPayload = {
   delivery_address_id: string | number;
   payment_type: 'cod' | 'prepaid';
   payment_method?: string;
+  /** Online PG — required on POST /order/ for prepaid (e.g. "cashfree") */
+  payment_gateway?: 'cashfree' | 'razorpay' | 'icici' | string;
   shipping_method: 'STD' | 'EXPRESS';
   shipping_charges: number;
   cod_charges: number;
@@ -192,48 +195,6 @@ export const buildGiftWrapItemIds = (items: OrderCartLine[] = []): string[] =>
     .map(getCartItemId)
     .filter((id): id is string => Boolean(id));
 
-/**
- * Method the user selected in Razorpay checkout (SDK success event).
- * Passes through as-is — no static default like "upi".
- */
-export const getRazorpayPaymentMethod = (
-  razorpayResult?: any,
-): string | null => {
-  if (!razorpayResult || typeof razorpayResult !== 'object') {
-    return null;
-  }
-
-  // Some SDK builds stringify the payload
-  let data = razorpayResult;
-  if (typeof razorpayResult === 'string') {
-    try {
-      data = JSON.parse(razorpayResult);
-    } catch {
-      return null;
-    }
-  }
-
-  const candidates = [
-    data.method,
-    data.payment_method,
-    data.razorpay_payment_method,
-    data.wallet,
-    data.data?.method,
-    data.payload?.method,
-  ];
-
-  for (const value of candidates) {
-    if (value != null && String(value).trim() !== '') {
-      return String(value).trim().toLowerCase();
-    }
-  }
-
-  return null;
-};
-
-/** @deprecated alias */
-export const resolveRazorpayPaymentMethod = getRazorpayPaymentMethod;
-
 type CommonArgs = {
   delivery_address_id: string | number;
   cartItems: OrderCartLine[];
@@ -288,11 +249,14 @@ type PrepaidArgs = CommonArgs & {
    * Omit when creating the Razorpay order (before user pays).
    */
   payment_method?: string | null;
+  /** Gateway for POST /order/ — e.g. "cashfree" */
+  payment_gateway?: OrderPayload['payment_gateway'];
 };
 
 /**
  * Complete prepaid / online order payload.
- * Do not send payment_method on create — Razorpay sets the method after pay.
+ * Do not send payment_method on create — gateway checkout sets the method after pay.
+ * Always send payment_gateway when provided (required for Cashfree / Razorpay / etc.).
  */
 export const buildPrepaidOrderPayload = ({
   delivery_address_id,
@@ -302,8 +266,9 @@ export const buildPrepaidOrderPayload = ({
   shipping_method = 'STD',
   prepaid_amount,
   coupon_code,
+  payment_gateway,
 }: PrepaidArgs): OrderPayload => {
-  // Intentionally ignore payment_method for place-order (online).
+  const gateway = String(payment_gateway || '').trim();
   return withCouponFields(
     {
       delivery_address_id,
@@ -314,6 +279,7 @@ export const buildPrepaidOrderPayload = ({
       prepaid_amount: Math.max(0, Math.round(Number(prepaid_amount) || 0)),
       cart_item_ids: buildCartItemIds(cartItems),
       gift_wrap_item_ids: buildGiftWrapItemIds(cartItems),
+      ...(gateway ? { payment_gateway: gateway } : {}),
     },
     { coupon_code },
   );
@@ -329,6 +295,7 @@ export const buildOrderPayload = (args: {
   shipping_method?: 'STD' | 'EXPRESS';
   mode: 'cod' | 'prepaid';
   payment_method?: string | null;
+  payment_gateway?: OrderPayload['payment_gateway'];
   coupon_code?: string;
 }): OrderPayload => {
   if (args.mode === 'cod') {
@@ -338,5 +305,6 @@ export const buildOrderPayload = (args: {
     ...args,
     prepaid_amount: args.prepaid_amount ?? 0,
     payment_method: args.payment_method,
+    payment_gateway: args.payment_gateway,
   });
 };

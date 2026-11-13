@@ -204,9 +204,6 @@ const CouponOffersPanel = ({
               returnKeyType="done"
               onSubmitEditing={() => submit()}
             />
-            {/* <TouchableOpacity style={styles.pasteBtn} onPress={pasteCode}>
-              <Text style={styles.pasteText}>Paste</Text>
-            </TouchableOpacity> */}
             <TouchableOpacity
               style={styles.applyBtn}
               onPress={() => submit()}

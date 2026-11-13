@@ -9,7 +9,6 @@
     "ios/Pods",
     "ios/DerivedData",
     ".git",
-    "node_modules",
     "coverage",
     ".idea"
   ]

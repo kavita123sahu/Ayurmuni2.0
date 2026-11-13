@@ -102,6 +102,8 @@ const DashboardCard = ({
               ]}
               onPress={item.onPress}
               activeOpacity={0.75}
+              delayPressIn={0}
+              hitSlop={6}
             >
               {content}
             </TouchableOpacity>
@@ -127,7 +129,7 @@ const DashboardCard = ({
   );
 };
 
-export default DashboardCard;
+export default React.memo(DashboardCard);
 
 const styles = StyleSheet.create({
   row: {

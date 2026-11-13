@@ -190,8 +190,39 @@ export async function resolveAccessLikeProfile(): Promise<{
   try {
     const res: any = await ProfileServices.user_profile();
     if (res?.data) {
-      // Merge so onboarding fields are not wiped if API lags on flags
+      // Prefer API payload; keep only missing keys from cache so retakes update
       profile = { ...(cached || {}), ...res.data };
+      // Explicitly overwrite progress / assessment fields from network
+      if (res.data.prakriti_progress != null) {
+        profile.prakriti_progress = res.data.prakriti_progress;
+      }
+      if (res.data.medical_history_progress != null) {
+        profile.medical_history_progress = res.data.medical_history_progress;
+      }
+      if (res.data.vikriti_progress != null) {
+        profile.vikriti_progress = res.data.vikriti_progress;
+      }
+      // Keep all prakriti name aliases in sync so HomeHeader cannot show a
+      // stale prakriti_type while dominant_prakriti / result already updated
+      const prakritiLabel =
+        res.data.result ||
+        res.data.dominant_prakriti ||
+        res.data.prakriti_result ||
+        res.data.prakriti_type ||
+        res.data.prakriti_name ||
+        null;
+      if (prakritiLabel != null) {
+        profile.result = prakritiLabel;
+        profile.dominant_prakriti = prakritiLabel;
+        profile.prakriti_result = prakritiLabel;
+        profile.prakriti_type = prakritiLabel;
+        profile.prakriti_name = prakritiLabel;
+        void Utils.storeData('PRAKRITI_RESULT_NAME', String(prakritiLabel));
+      } else if (res.data.prakriti_result != null) {
+        profile.prakriti_result = res.data.prakriti_result;
+      } else if (res.data.dominant_prakriti != null) {
+        profile.dominant_prakriti = res.data.dominant_prakriti;
+      }
       await Utils.storeData(ACCESS_KEYS.USER_INFO, profile);
     }
   } catch {

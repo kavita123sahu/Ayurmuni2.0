@@ -1,1020 +1,10 @@
 
-
-// import React, { useCallback, useState } from 'react';
-// import {
-//     View,
-//     Text,
-//     StyleSheet,
-//     TouchableOpacity,
-//     ScrollView,
-// } from 'react-native';
-
-// import ProfileHeader from '../../components/ProfileHeader';
-// import { Fonts } from '../../common/Fonts';
-// import { Utils } from '../../common/Utils';
-// import Header from '../../components/Header';
-// import { Colors } from '../../common/Colors';
-// import PrimaryButton from '../../components/PrimaryButton';
-// import ScreenShell from '../../components/ScreenShell';
-// import TablerIcon, { TablerIconName } from '../../components/TablerIcon';
-// import * as ProfileServices from '../../services/ProfileServices';
-// import CommonModal from '../../components/LogoutModal';
-// import { SECTION_GAP } from '../../constants/layout';
-// import { useFocusEffect } from '@react-navigation/native';
-
-
-
-// type MenuEntry = {
-//     id: number;
-//     title: string;
-//     icon: TablerIconName;
-// };
-
-// type ExploreItem = {
-//     id: string;
-//     title: string;
-//     subtitle: string;
-//     icon: TablerIconName;
-//     color: string;
-//     bg: string;
-//     onPress: () => void;
-// };
-
-// const ProfilePage = ({ navigation }: any) => {
-//     const stackNav = navigation.getParent?.() || navigation;
-
-//     const [logoutVisible, setLogoutVisible] = useState(false);
-//     const [user, setUser] = useState(null);
-
-//     useFocusEffect(
-//         useCallback(() => {
-//             const loadUser = async () => {
-//                 const CustomerInfo = await Utils.getData('_USER_INFO');
-
-//                 if (CustomerInfo) {
-//                     setUser(CustomerInfo);
-//                 }
-
-//                 await fetchUserData();
-//             };
-
-//             loadUser();
-//         }, [])
-//     );
-
-//     const fetchUserData = async () => {
-//         try {
-//             const token = await Utils.getData('_TOKEN');
-//             const CustomerInfo = await Utils.getData('_USER_INFO');
-//             if (!token) return;
-//             const res: any = await ProfileServices.user_profile();
-//             console.log('USERPROFILE =>', res?.data);
-//             setUser(CustomerInfo || res?.data);
-//         } catch (error) {
-//             console.log('Profile Error:', error);
-//         }
-//     };
-
-//     const logout = () => setLogoutVisible(true);
-
-//     const accountMenu: MenuEntry[] = [
-//         { id: 1, title: 'Patient Details', icon: 'users' },
-//         { id: 2, title: 'Saved Address', icon: 'map-pin' },
-//         { id: 3, title: 'My Appointments', icon: 'calendar' },
-//         { id: 4, title: 'Order History', icon: 'receipt' },
-//         { id: 5, title: 'Medical Records', icon: 'file-medical' },
-//         { id: 6, title: 'Favourite Doctor', icon: 'heart' },
-//         { id: 7, title: 'Wishlist', icon: 'heart-filled' },
-//         { id: 8, title: 'Mentor', icon: 'school' },
-//         { id: 9, title: 'Cart', icon: 'shopping-cart' },
-//         { id: 10, title: 'Analysis', icon: 'chart-pie' },
-//     ];
-
-//     const preferenceMenu: MenuEntry[] = [
-//         { id: 6, title: 'Payments', icon: 'credit-card' },
-//         { id: 7, title: 'Settings', icon: 'settings' },
-//         { id: 8, title: 'FAQ', icon: 'help' },
-//     ];
-
-//     const exploreItems: ExploreItem[] = [
-//         {
-//             id: 'doctors',
-//             title: 'Doctors',
-//             subtitle: 'Browse experts',
-//             icon: 'stethoscope',
-//             color: '#0D614E',
-//             bg: '#E8F3F1',
-//             onPress: () => stackNav.navigate('AllDoctors', { all: true }),
-//         },
-//         {
-//             id: 'medicines',
-//             title: 'Medicines',
-//             subtitle: 'Ayurvedic care',
-//             icon: 'pill',
-//             color: '#B45309',
-//             bg: '#FEF3C7',
-//             onPress: () => navigation.navigate('Medicine'),
-//         },
-//         {
-//             id: 'products',
-//             title: 'Products',
-//             subtitle: 'Wellness picks',
-//             icon: 'package',
-//             color: '#1D4ED8',
-//             bg: '#DBEAFE',
-//             onPress: () => navigation.navigate('Products'),
-//         },
-//         {
-//             id: 'yoga',
-//             title: 'Yoga',
-//             subtitle: 'Sessions',
-//             icon: 'mood-smile',
-//             color: '#7C3AED',
-//             bg: '#EDE9FE',
-//             onPress: () => stackNav.navigate('YogaScreen'),
-//         },
-//         {
-//             id: 'diet',
-//             title: 'Diet Plan',
-//             subtitle: 'Personalized',
-//             icon: 'spoon',
-//             color: '#059669',
-//             bg: '#D1FAE5',
-//             onPress: () => stackNav.navigate('DietScreen'),
-//         },
-//         {
-//             id: 'prakriti',
-//             title: 'Prakriti',
-//             subtitle: 'Know your type',
-//             icon: 'ingredient',
-//             color: '#0F766E',
-//             bg: '#CCFBF1',
-//             onPress: () => stackNav.navigate('PrakritiProfile'),
-//         },
-//     ];
-
-//     const handleNavigation = (item: MenuEntry) => {
-//         switch (item.title) {
-//             case 'Patient Details':
-//                 stackNav.navigate('PatientDetails');
-//                 break;
-//             case 'My Appointments':
-//                 stackNav.navigate('Appointments');
-//                 break;
-//             case 'Order History':
-//                 stackNav.navigate('OrderHistory');
-//                 break;
-//             case 'Saved Address':
-//                 stackNav.navigate('ManageAdrees');
-//                 break;
-//             case 'Medical Records':
-//                 stackNav.navigate('MedicalRecords');
-//                 break;
-//             case 'Favourite Doctor':
-//                 stackNav.navigate('FavDoctors');
-//                 break;
-//             case 'Wishlist':
-//                 stackNav.navigate('Wishlist');
-//                 break;
-//             case 'Mentor':
-//                 stackNav.navigate('Mentor');
-//                 break;
-//             case 'Cart':
-//                 stackNav.navigate('MyCart');
-//                 break;
-//             case 'Payments':
-//                 stackNav.navigate('PaymentsScreen');
-//                 break;
-//             case 'Settings':
-//                 stackNav.navigate('Settings');
-//                 break;
-//             case 'FAQ':
-//                 stackNav.navigate('FAQScreen');
-//                 break;
-//             case 'Analysis':
-//                 stackNav.navigate('PrakritiProfile');
-//                 break;
-//             default:
-//                 break;
-//         }
-//     };
-
-//     const handleLogout = async () => {
-//         setLogoutVisible(false);
-//         await Utils.clearAllData();
-//         navigation.replace('Welcome');
-//     };
-
-//     const MenuItem = ({ item }: { item: MenuEntry }) => (
-//         <TouchableOpacity
-//             style={styles.card}
-//             activeOpacity={0.7}
-//             onPress={() => handleNavigation(item)}
-//         >
-//             <View style={[styles.iconContainer, { backgroundColor: '#E8F3F1' }]}>
-//                 <TablerIcon name={item.icon} size={22} color="#1B5E54" />
-//             </View>
-//             <Text style={styles.menuTitle}>{item.title}</Text>
-//             <TablerIcon name="chevron-right" size={20} color="#CBD5E1" />
-//         </TouchableOpacity>
-//     );
-
-//     const Section = ({ title, children }: any) => (
-//         <View style={styles.wrapper}>
-//             <Text style={styles.sectionTitle}>{title}</Text>
-//             <View>{children}</View>
-//         </View>
-//     );
-
-//     return (
-//         <>
-//             <ScreenShell withTabBar contentStyle={styles.shellContent}>
-//                 <Header title="Profile" subtitle="Manage your account" onBack={() => navigation.goBack()} />
-
-//                 <ScrollView
-//                     style={styles.scrollArea}
-//                     showsVerticalScrollIndicator={false}
-//                     contentContainerStyle={styles.scrollContent}
-//                     keyboardShouldPersistTaps="handled"
-//                 >
-
-//                     <ProfileHeader user={user} navigation={navigation} />
-
-//                     <Section title="Account">
-//                         {accountMenu.map((item) => (
-//                             <MenuItem key={item.id} item={item} />
-//                         ))}
-//                     </Section>
-
-//                     <Section title="Preference">
-//                         {preferenceMenu.map((item) => (
-//                             <MenuItem key={item.id} item={item} />
-//                         ))}
-//                     </Section>
-
-//                     <TouchableOpacity
-//                         style={styles.logoutBtn}
-//                         onPress={logout}
-//                         activeOpacity={0.8}
-//                     >
-//                         <TablerIcon name="logout" size={20} color={Colors.errorColor} />
-//                         <Text style={styles.logoutText}>Logout</Text>
-//                     </TouchableOpacity>
-
-//                     <Text style={styles.version}>APP VERSION 1.0</Text>
-//                 </ScrollView>
-//             </ScreenShell>
-
-//             {logoutVisible && (
-//                 <CommonModal
-//                     visible={logoutVisible}
-//                     icon="👋"
-//                     title="Logout"
-//                     subtitle="Are you sure you want to logout from Ayurmuni?"
-//                     cancelText="No"
-//                     confirmText="Yes, Logout"
-//                     onClose={() => setLogoutVisible(false)}
-//                     onConfirm={handleLogout}
-//                 />
-//             )}
-//         </>
-//     );
-// };
-
-// export default ProfilePage;
-
-// const styles = StyleSheet.create({
-//     shellContent: {
-//         flex: 1,
-//         paddingTop: 0,
-//     },
-//     scrollArea: {
-//         flex: 1,
-//     },
-//     scrollContent: {
-//         flexGrow: 1,
-//         paddingTop: 4,
-//     },
-//     wrapper: {
-//         marginTop: SECTION_GAP,
-//     },
-//     sectionTitle: {
-//         fontSize: 18,
-//         fontFamily: Fonts.PoppinsSemiBold,
-//         marginBottom: 8,
-//         color: '#111',
-//     },
-//     card: {
-//         flexDirection: 'row',
-//         alignItems: 'center',
-//         backgroundColor: '#FFFFFF',
-//         paddingVertical: 14,
-//         paddingHorizontal: 14,
-//         borderRadius: 14,
-//         borderWidth: 1,
-//         borderColor: '#F1F5F9',
-//         marginBottom: 10,
-//     },
-//     cardLocked: {
-//         backgroundColor: '#FAFAFA',
-//     },
-//     iconContainer: {
-//         width: 46,
-//         height: 46,
-//         borderRadius: 12,
-//         justifyContent: 'center',
-//         alignItems: 'center',
-//         marginRight: 12,
-//     },
-//     menuTitle: {
-//         flex: 1,
-//         fontSize: 15,
-//         color: Colors.textColor,
-//         fontFamily: Fonts.PoppinsMedium,
-//     },
-//     menuTitleLocked: {
-//         color: '#94A3B8',
-//     },
-//     lockPill: {
-//         flexDirection: 'row',
-//         alignItems: 'center',
-//         gap: 4,
-//         backgroundColor: '#F1F5F9',
-//         paddingHorizontal: 10,
-//         paddingVertical: 5,
-//         borderRadius: 20,
-//     },
-//     lockText: {
-//         fontSize: 11,
-//         color: '#64748B',
-//         fontFamily: Fonts.PoppinsMedium,
-//     },
-//     logoutBtn: {
-//         flexDirection: 'row',
-//         alignItems: 'center',
-//         justifyContent: 'center',
-//         gap: 8,
-//         marginTop: SECTION_GAP,
-//         paddingVertical: 14,
-//         borderRadius: 14,
-//         backgroundColor: '#FEF2F2',
-//         borderWidth: 1,
-//         borderColor: '#FFCECE',
-//     },
-//     logoutText: {
-//         fontSize: 15,
-//         color: Colors.errorColor,
-//         fontFamily: Fonts.PoppinsMedium,
-//     },
-//     version: {
-//         textAlign: 'center',
-//         fontFamily: Fonts.PoppinsMedium,
-//         fontSize: 13,
-//         marginTop: 12,
-//         paddingVertical: 8,
-//         color: '#A1A1AA',
-//     },
-//     guestHero: {
-//         marginTop: SECTION_GAP,
-//         backgroundColor: '#FFFFFF',
-//         borderRadius: 24,
-//         padding: 22,
-//         borderWidth: 1,
-//         borderColor: '#E2E8F0',
-//         shadowColor: '#0D614E',
-//         shadowOffset: { width: 0, height: 8 },
-//         shadowOpacity: 0.08,
-//         shadowRadius: 16,
-//         elevation: 4,
-//     },
-//     guestHeroTop: {
-//         flexDirection: 'row',
-//         alignItems: 'center',
-//         justifyContent: 'space-between',
-//         marginBottom: 16,
-//     },
-//     guestAvatar: {
-//         width: 64,
-//         height: 64,
-//         borderRadius: 32,
-//         backgroundColor: '#E8F3F1',
-//         justifyContent: 'center',
-//         alignItems: 'center',
-//         borderWidth: 2,
-//         borderColor: '#C6E7DF',
-//     },
-//     guestBadge: {
-//         flexDirection: 'row',
-//         alignItems: 'center',
-//         gap: 5,
-//         backgroundColor: '#E8F3F1',
-//         paddingHorizontal: 12,
-//         paddingVertical: 6,
-//         borderRadius: 20,
-//     },
-//     guestBadgeText: {
-//         fontSize: 12,
-//         fontFamily: Fonts.PoppinsSemiBold,
-//         color: '#0D614E',
-//     },
-//     guestHeroTitle: {
-//         fontSize: 22,
-//         fontFamily: Fonts.PoppinsSemiBold,
-//         color: '#0F172A',
-//         marginBottom: 8,
-//     },
-//     guestHeroSubtitle: {
-//         fontSize: 14,
-//         lineHeight: 22,
-//         fontFamily: Fonts.PoppinsRegular,
-//         color: '#64748B',
-//         marginBottom: 14,
-//     },
-//     guestPerks: {
-//         marginBottom: 18,
-//         gap: 8,
-//     },
-//     perkRow: {
-//         flexDirection: 'row',
-//         alignItems: 'center',
-//         gap: 8,
-//     },
-//     perkText: {
-//         fontSize: 13,
-//         fontFamily: Fonts.PoppinsMedium,
-//         color: '#334155',
-//     },
-//     exitGuestBtn: {
-//         marginTop: 14,
-//         paddingVertical: 10,
-//         alignItems: 'center',
-//     },
-//     exitGuestText: {
-//         fontSize: 14,
-//         color: '#64748B',
-//         fontFamily: Fonts.PoppinsMedium,
-//     },
-//     exploreSection: {
-//         marginTop: SECTION_GAP,
-//     },
-//     exploreTitle: {
-//         fontSize: 18,
-//         fontFamily: Fonts.PoppinsSemiBold,
-//         color: '#111',
-//         marginBottom: 12,
-//     },
-//     exploreGrid: {
-//         flexDirection: 'row',
-//         flexWrap: 'wrap',
-//         gap: 10,
-//         justifyContent: 'space-between',
-//     },
-//     exploreCard: {
-//         width: '31%',
-//         minWidth: 100,
-//         backgroundColor: '#FFFFFF',
-//         borderRadius: 16,
-//         padding: 12,
-//         borderWidth: 1,
-//         borderColor: '#F1F5F9',
-//         alignItems: 'center',
-//     },
-//     exploreIconWrap: {
-//         width: 44,
-//         height: 44,
-//         borderRadius: 12,
-//         justifyContent: 'center',
-//         alignItems: 'center',
-//         marginBottom: 8,
-//     },
-
-//     exploreCardTitle: {
-//         fontSize: 12,
-//         fontFamily: Fonts.PoppinsSemiBold,
-//         color: '#0F172A',
-//         textAlign: 'center',
-//     },
-//     exploreCardSub: {
-//         fontSize: 10,
-//         fontFamily: Fonts.PoppinsRegular,
-//         color: '#94A3B8',
-//         textAlign: 'center',
-//         marginTop: 2,
-//     },
-// });
-
-// import React, { useCallback, useState } from 'react';
-// import {
-//     View,
-//     Text,
-//     StyleSheet,
-//     TouchableOpacity,
-//     ScrollView,
-// } from 'react-native';
-
-// import ProfileHeader from '../../components/ProfileHeader';
-// import { Fonts } from '../../common/Fonts';
-// import { Utils } from '../../common/Utils';
-// import Header from '../../components/Header';
-// import { Colors } from '../../common/Colors';
-// import PrimaryButton from '../../components/PrimaryButton';
-// import ScreenShell from '../../components/ScreenShell';
-// import TablerIcon, { TablerIconName } from '../../components/TablerIcon';
-// import * as ProfileServices from '../../services/ProfileServices';
-// import CommonModal from '../../components/LogoutModal';
-// import { getScreenBottomPadding, SECTION_GAP } from '../../constants/layout';
-// import { useFocusEffect } from '@react-navigation/native';
-// import { useSafeAreaInsets } from 'react-native-safe-area-context';
-
-
-
-// type MenuEntry = {
-//     id: number;
-//     title: string;
-//     icon: TablerIconName;
-// };
-
-// type ExploreItem = {
-//     id: string;
-//     title: string;
-//     subtitle: string;
-//     icon: TablerIconName;
-//     color: string;
-//     bg: string;
-//     onPress: () => void;
-// };
-
-// const ProfilePage = ({ navigation }: any) => {
-//     const stackNav = navigation.getParent?.() || navigation;
-//     const insets = useSafeAreaInsets();
-//     const tabClearance = getScreenBottomPadding(insets);
-
-//     const [logoutVisible, setLogoutVisible] = useState(false);
-//     const [user, setUser] = useState(null);
-
-//     useFocusEffect(
-//         useCallback(() => {
-//             const loadUser = async () => {
-//                 const CustomerInfo = await Utils.getData('_USER_INFO');
-
-//                 if (CustomerInfo) {
-//                     setUser(CustomerInfo);
-//                 }
-
-//                 await fetchUserData();
-//             };
-
-//             loadUser();
-//         }, [])
-//     );
-
-//     const fetchUserData = async () => {
-//         try {
-//             const token = await Utils.getData('_TOKEN');
-//             const CustomerInfo = await Utils.getData('_USER_INFO');
-//             if (!token) return;
-//             const res: any = await ProfileServices.user_profile();
-//             console.log('USERPROFILE =>', res?.data);
-//             setUser(CustomerInfo || res?.data);
-//         } catch (error) {
-//             console.log('Profile Error:', error);
-//         }
-//     };
-
-//     const logout = () => setLogoutVisible(true);
-
-//     const accountMenu: MenuEntry[] = [
-//         { id: 1, title: 'Patient Details', icon: 'users' },
-//         { id: 2, title: 'Saved Address', icon: 'map-pin' },
-//         { id: 3, title: 'My Appointments', icon: 'calendar' },
-//         { id: 4, title: 'Order History', icon: 'receipt' },
-//         { id: 5, title: 'Medical Records', icon: 'file-medical' },
-//         { id: 6, title: 'Favourite Doctor', icon: 'heart' },
-//         { id: 7, title: 'Wishlist', icon: 'heart-filled' },
-//         { id: 8, title: 'Mentor', icon: 'school' },
-//         { id: 9, title: 'Cart', icon: 'shopping-cart' },
-//         { id: 10, title: 'Analysis', icon: 'chart-pie' },
-//     ];
-
-//     const preferenceMenu: MenuEntry[] = [
-//         { id: 6, title: 'Payments', icon: 'credit-card' },
-//         { id: 7, title: 'Settings', icon: 'settings' },
-//         { id: 8, title: 'FAQ', icon: 'help' },
-//     ];
-
-//     const exploreItems: ExploreItem[] = [
-//         {
-//             id: 'doctors',
-//             title: 'Doctors',
-//             subtitle: 'Browse experts',
-//             icon: 'stethoscope',
-//             color: '#0D614E',
-//             bg: '#E8F3F1',
-//             onPress: () => stackNav.navigate('AllDoctors', { all: true }),
-//         },
-//         {
-//             id: 'medicines',
-//             title: 'Medicines',
-//             subtitle: 'Ayurvedic care',
-//             icon: 'pill',
-//             color: '#B45309',
-//             bg: '#FEF3C7',
-//             onPress: () => navigation.navigate('Medicine'),
-//         },
-//         {
-//             id: 'products',
-//             title: 'Products',
-//             subtitle: 'Wellness picks',
-//             icon: 'package',
-//             color: '#1D4ED8',
-//             bg: '#DBEAFE',
-//             onPress: () => navigation.navigate('Products'),
-//         },
-//         {
-//             id: 'yoga',
-//             title: 'Yoga',
-//             subtitle: 'Sessions',
-//             icon: 'mood-smile',
-//             color: '#7C3AED',
-//             bg: '#EDE9FE',
-//             onPress: () => stackNav.navigate('YogaScreen'),
-//         },
-//         {
-//             id: 'diet',
-//             title: 'Diet Plan',
-//             subtitle: 'Personalized',
-//             icon: 'spoon',
-//             color: '#059669',
-//             bg: '#D1FAE5',
-//             onPress: () => stackNav.navigate('DietScreen'),
-//         },
-//         {
-//             id: 'prakriti',
-//             title: 'Prakriti',
-//             subtitle: 'Know your type',
-//             icon: 'ingredient',
-//             color: '#0F766E',
-//             bg: '#CCFBF1',
-//             onPress: () => stackNav.navigate('PrakritiProfile'),
-//         },
-//     ];
-
-//     const handleNavigation = (item: MenuEntry) => {
-//         switch (item.title) {
-//             case 'Patient Details':
-//                 stackNav.navigate('PatientDetails');
-//                 break;
-//             case 'My Appointments':
-//                 stackNav.navigate('Appointments');
-//                 break;
-//             case 'Order History':
-//                 stackNav.navigate('OrderHistory');
-//                 break;
-//             case 'Saved Address':
-//                 stackNav.navigate('ManageAdrees');
-//                 break;
-//             case 'Medical Records':
-//                 stackNav.navigate('MedicalRecords');
-//                 break;
-//             case 'Favourite Doctor':
-//                 stackNav.navigate('FavDoctors');
-//                 break;
-//             case 'Wishlist':
-//                 stackNav.navigate('Wishlist');
-//                 break;
-//             case 'Mentor':
-//                 stackNav.navigate('Mentor');
-//                 break;
-//             case 'Cart':
-//                 stackNav.navigate('MyCart');
-//                 break;
-//             case 'Payments':
-//                 stackNav.navigate('PaymentsScreen');
-//                 break;
-//             case 'Settings':
-//                 stackNav.navigate('Settings');
-//                 break;
-//             case 'FAQ':
-//                 stackNav.navigate('FAQScreen');
-//                 break;
-//             case 'Analysis':
-//                 stackNav.navigate('PrakritiProfile');
-//                 break;
-//             default:
-//                 break;
-//         }
-//     };
-
-//     const handleLogout = async () => {
-//         setLogoutVisible(false);
-//         await Utils.clearAllData();
-//         navigation.replace('Welcome');
-//     };
-
-//     const MenuItem = ({ item }: { item: MenuEntry }) => (
-//         <TouchableOpacity
-//             style={styles.card}
-//             activeOpacity={0.7}
-//             onPress={() => handleNavigation(item)}
-//         >
-//             <View style={[styles.iconContainer, { backgroundColor: '#E8F3F1' }]}>
-//                 <TablerIcon name={item.icon} size={22} color="#1B5E54" />
-//             </View>
-//             <Text style={styles.menuTitle}>{item.title}</Text>
-//             <TablerIcon name="chevron-right" size={20} color="#CBD5E1" />
-//         </TouchableOpacity>
-//     );
-
-//     const Section = ({ title, children }: any) => (
-//         <View style={styles.wrapper}>
-//             <Text style={styles.sectionTitle}>{title}</Text>
-//             <View>{children}</View>
-//         </View>
-//     );
-
-//     return (
-//         <>
-//             <ScreenShell contentStyle={styles.shellContent}>
-//                 <Header title="Profile" subtitle="Manage your account" onBack={() => navigation.goBack()} />
-
-//                 <ScrollView
-//                     style={[styles.scrollArea, { marginBottom: tabClearance }]}
-//                     showsVerticalScrollIndicator={false}
-//                     contentContainerStyle={[styles.scrollContent, { paddingBottom: 16 }]}
-//                     keyboardShouldPersistTaps="handled"
-//                 >
-
-//                     <ProfileHeader user={user} navigation={navigation} />
-
-//                     <Section title="Account">
-//                         {accountMenu.map((item) => (
-//                             <MenuItem key={item.id} item={item} />
-//                         ))}
-//                     </Section>
-
-//                     <Section title="Preference">
-//                         {preferenceMenu.map((item) => (
-//                             <MenuItem key={item.id} item={item} />
-//                         ))}
-//                     </Section>
-
-//                     <TouchableOpacity
-//                         style={styles.logoutBtn}
-//                         onPress={logout}
-//                         activeOpacity={0.8}
-//                     >
-//                         <TablerIcon name="logout" size={20} color={Colors.errorColor} />
-//                         <Text style={styles.logoutText}>Logout</Text>
-//                     </TouchableOpacity>
-
-//                     <Text style={styles.version}>APP VERSION 1.0</Text>
-//                 </ScrollView>
-//             </ScreenShell>
-
-//             {logoutVisible && (
-//                 <CommonModal
-//                     visible={logoutVisible}
-//                     icon="👋"
-//                     title="Logout"
-//                     subtitle="Are you sure you want to logout from Ayurmuni?"
-//                     cancelText="No"
-//                     confirmText="Yes, Logout"
-//                     onClose={() => setLogoutVisible(false)}
-//                     onConfirm={handleLogout}
-//                 />
-//             )}
-//         </>
-//     );
-// };
-
-// export default ProfilePage;
-
-// const styles = StyleSheet.create({
-//     shellContent: {
-//         flex: 1,
-//         paddingTop: 0,
-//     },
-//     scrollArea: {
-//         flex: 1,
-//     },
-//     scrollContent: {
-//         flexGrow: 1,
-//         paddingTop: 4,
-//     },
-//     wrapper: {
-//         marginTop: SECTION_GAP,
-//     },
-//     sectionTitle: {
-//         fontSize: 18,
-//         fontFamily: Fonts.PoppinsSemiBold,
-//         marginBottom: 8,
-//         color: '#111',
-//     },
-//     card: {
-//         flexDirection: 'row',
-//         alignItems: 'center',
-//         backgroundColor: '#FFFFFF',
-//         paddingVertical: 14,
-//         paddingHorizontal: 14,
-//         borderRadius: 14,
-//         borderWidth: 1,
-//         borderColor: '#F1F5F9',
-//         marginBottom: 10,
-//     },
-//     cardLocked: {
-//         backgroundColor: '#FAFAFA',
-//     },
-//     iconContainer: {
-//         width: 46,
-//         height: 46,
-//         borderRadius: 12,
-//         justifyContent: 'center',
-//         alignItems: 'center',
-//         marginRight: 12,
-//     },
-//     menuTitle: {
-//         flex: 1,
-//         fontSize: 15,
-//         color: Colors.textColor,
-//         fontFamily: Fonts.PoppinsMedium,
-//     },
-//     menuTitleLocked: {
-//         color: '#94A3B8',
-//     },
-//     lockPill: {
-//         flexDirection: 'row',
-//         alignItems: 'center',
-//         gap: 4,
-//         backgroundColor: '#F1F5F9',
-//         paddingHorizontal: 10,
-//         paddingVertical: 5,
-//         borderRadius: 20,
-//     },
-//     lockText: {
-//         fontSize: 11,
-//         color: '#64748B',
-//         fontFamily: Fonts.PoppinsMedium,
-//     },
-//     logoutBtn: {
-//         flexDirection: 'row',
-//         alignItems: 'center',
-//         justifyContent: 'center',
-//         gap: 8,
-//         marginTop: SECTION_GAP,                                                      
-//         paddingVertical: 14,
-//         borderRadius: 14,
-//         backgroundColor: '#FEF2F2',                                  
-//         borderWidth: 1,
-//         borderColor: '#FFCECE',
-//     },
-//     logoutText: {
-//         fontSize: 15,
-//         color: Colors.errorColor,
-//         fontFamily: Fonts.PoppinsMedium,
-//     },
-//     version: {
-//         textAlign: 'center',
-//         fontFamily: Fonts.PoppinsMedium,
-//         fontSize: 13,
-//         marginTop: 12,
-//         paddingVertical: 8,
-//         color: '#A1A1AA',
-//     },
-//     guestHero: {
-//         marginTop: SECTION_GAP,
-//         backgroundColor: '#FFFFFF',
-//         borderRadius: 24,
-//         padding: 22,
-//         borderWidth: 1,
-//         borderColor: '#E2E8F0',
-//         shadowColor: '#0D614E',
-//         shadowOffset: { width: 0, height: 8 },
-//         shadowOpacity: 0.08,
-//         shadowRadius: 16,
-//         elevation: 4,
-//     },
-//     guestHeroTop: {
-//         flexDirection: 'row',
-//         alignItems: 'center',
-//         justifyContent: 'space-between',
-//         marginBottom: 16,
-//     },
-//     guestAvatar: {
-//         width: 64,
-//         height: 64,
-//         borderRadius: 32,
-//         backgroundColor: '#E8F3F1',
-//         justifyContent: 'center',
-//         alignItems: 'center',
-//         borderWidth: 2,
-//         borderColor: '#C6E7DF',
-//     },
-//     guestBadge: {
-//         flexDirection: 'row',
-//         alignItems: 'center',
-//         gap: 5,
-//         backgroundColor: '#E8F3F1',
-//         paddingHorizontal: 12,
-//         paddingVertical: 6,
-//         borderRadius: 20,
-//     },
-//     guestBadgeText: {
-//         fontSize: 12,
-//         fontFamily: Fonts.PoppinsSemiBold,
-//         color: '#0D614E',
-//     },
-//     guestHeroTitle: {
-//         fontSize: 22,
-//         fontFamily: Fonts.PoppinsSemiBold,
-//         color: '#0F172A',
-//         marginBottom: 8,
-//     },
-//     guestHeroSubtitle: {
-//         fontSize: 14,
-//         lineHeight: 22,
-//         fontFamily: Fonts.PoppinsRegular,
-//         color: '#64748B',
-//         marginBottom: 14,
-//     },
-//     guestPerks: {
-//         marginBottom: 18,
-//         gap: 8,
-//     },
-//     perkRow: {
-//         flexDirection: 'row',
-//         alignItems: 'center',
-//         gap: 8,
-//     },
-//     perkText: {
-//         fontSize: 13,
-//         fontFamily: Fonts.PoppinsMedium,
-//         color: '#334155',
-//     },
-//     exitGuestBtn: {
-//         marginTop: 14,
-//         paddingVertical: 10,
-//         alignItems: 'center',
-//     },
-//     exitGuestText: {
-//         fontSize: 14,
-//         color: '#64748B',
-//         fontFamily: Fonts.PoppinsMedium,
-//     },
-//     exploreSection: {
-//         marginTop: SECTION_GAP,
-//     },
-//     exploreTitle: {
-//         fontSize: 18,
-//         fontFamily: Fonts.PoppinsSemiBold,
-//         color: '#111',
-//         marginBottom: 12,
-//     },
-//     exploreGrid: {
-//         flexDirection: 'row',
-//         flexWrap: 'wrap',
-//         gap: 10,
-//         justifyContent: 'space-between',
-//     },
-//     exploreCard: {
-//         width: '31%',
-//         minWidth: 100,
-//         backgroundColor: '#FFFFFF',
-//         borderRadius: 16,
-//         padding: 12,
-//         borderWidth: 1,
-//         borderColor: '#F1F5F9',
-//         alignItems: 'center',
-//     },
-//     exploreIconWrap: {
-//         width: 44,
-//         height: 44,
-//         borderRadius: 12,
-//         justifyContent: 'center',
-//         alignItems: 'center',
-//         marginBottom: 8,
-//     },
-//     exploreCardTitle: {
-//         fontSize: 12,
-//         fontFamily: Fonts.PoppinsSemiBold,
-//         color: '#0F172A',
-//         textAlign: 'center',
-//     },
-//     exploreCardSub: {
-//         fontSize: 10,
-//         fontFamily: Fonts.PoppinsRegular,
-//         color: '#94A3B8',
-//         textAlign: 'center',
-//         marginTop: 2,
-//     },
-// });
-
-
-import React, { useCallback, useState } from 'react';
+import React, { memo, useCallback, useRef, useState } from 'react';
 import {
     View,
     Text,
     StyleSheet,
-    TouchableOpacity,
+    Pressable,
     ScrollView,
     StatusBar,
     Image,
@@ -1043,11 +33,9 @@ import {
     signOutToChangeNumber,
 } from '../../services/guestAuth';
 import LinearGradient from 'react-native-linear-gradient';
-import { goBackToHomeTab } from '../../navigation/navigationUtils';
-import { shouldRunThrottled } from '../../utils/fetchThrottle';
+import { goBackToHomeTab, openHomeStackScreen } from '../../navigation/navigationUtils';
+import { clearThrottle, shouldRunThrottled } from '../../utils/fetchThrottle';
 import { useLocation } from '../../context/LocationContext';
-
-
 
 type MenuEntry = {
     id: number;
@@ -1055,18 +43,104 @@ type MenuEntry = {
     icon: TablerIconName;
 };
 
-type ExploreItem = {
-    id: string;
-    title: string;
-    subtitle: string;
-    icon: TablerIconName;
-    color: string;
-    bg: string;
-    onPress: () => void;
+const PROFILE_REFRESH_KEY = 'profile-page-access';
+
+/** Skip setState when a focus refresh returns the same profile. New object identity was retriggering the loader. */
+const userSignature = (profile: any) => {
+    if (!profile) return '';
+    const diseases = Array.isArray(profile.health_diseases)
+        ? profile.health_diseases
+              .map((item: any) => item?.id ?? item?.name ?? item)
+              .join(',')
+        : '';
+    return [
+        profile.id ?? profile.customer_id ?? '',
+        profile.first_name ?? '',
+        profile.last_name ?? '',
+        profile.email ?? '',
+        profile.phone_number ?? '',
+        profile.profile_picture ?? '',
+        profile.result ?? profile.prakriti_type ?? profile.dominant_prakriti ?? '',
+        profile.prakriti_progress ?? '',
+        diseases,
+    ].join('|');
 };
 
+const accountMenu: MenuEntry[] = [
+    { id: 1, title: 'My Orders', icon: 'receipt' },
+    { id: 2, title: 'My Consultations', icon: 'calendar' },
+    { id: 10, title: 'My Plans', icon: 'certificate' },
+    { id: 3, title: 'Medical Records', icon: 'file-medical' },
+    { id: 4, title: 'Patient Details', icon: 'users' },
+    { id: 5, title: 'Saved Address', icon: 'map-pin' },
+    { id: 6, title: 'Favourite Doctor', icon: 'heart' },
+    { id: 7, title: 'Wishlist', icon: 'heart-filled' },
+    { id: 8, title: 'My Rewards', icon: 'trophy' },
+    { id: 9, title: 'Cart', icon: 'shopping-cart' },
+];
+
+const preferenceMenu: MenuEntry[] = [
+    { id: 11, title: 'Payments', icon: 'credit-card' },
+    { id: 12, title: 'Settings', icon: 'settings' },
+    { id: 13, title: 'Privacy Center', icon: 'shield' },
+    { id: 14, title: 'Need help?', icon: 'help' },
+];
+
+const MenuRow = memo(function MenuRow({
+    item,
+    isLast,
+    onPress,
+}: {
+    item: MenuEntry;
+    isLast?: boolean;
+    onPress: (item: MenuEntry) => void;
+}) {
+    return (
+        <Pressable
+            style={({ pressed }) => [
+                styles.card,
+                isLast && styles.cardLast,
+                pressed && styles.cardPressed,
+            ]}
+            onPress={() => onPress(item)}
+            android_ripple={{ color: '#E8F3F1' }}
+        >
+            <View style={[styles.iconContainer, { backgroundColor: '#E8F3F1' }]}>
+                <TablerIcon name={item.icon} size={18} color="#1B5E54" />
+            </View>
+            <Text style={styles.menuTitle}>{item.title}</Text>
+            <TablerIcon name="chevron-right" size={18} color="#CBD5E1" />
+        </Pressable>
+    );
+});
+
+const MenuSection = memo(function MenuSection({
+    title,
+    items,
+    onPress,
+}: {
+    title: string;
+    items: MenuEntry[];
+    onPress: (item: MenuEntry) => void;
+}) {
+    return (
+        <View style={styles.wrapper}>
+            <Text style={styles.sectionTitle}>{title}</Text>
+            <View style={styles.menuGroup} collapsable={false}>
+                {items.map((item, index) => (
+                    <MenuRow
+                        key={item.id}
+                        item={item}
+                        isLast={index === items.length - 1}
+                        onPress={onPress}
+                    />
+                ))}
+            </View>
+        </View>
+    );
+});
+
 const ProfilePage = ({ navigation }: any) => {
-    const stackNav = navigation.getParent?.() || navigation;
     const insets = useSafeAreaInsets();
     const tabClearance = getScreenBottomPadding(insets);
     const { clearLocationSession } = useLocation();
@@ -1075,65 +149,83 @@ const ProfilePage = ({ navigation }: any) => {
     const [user, setUser] = useState<any>(null);
     /** null = resolving access; avoids flashing wrong UI */
     const [isGuest, setIsGuest] = useState<boolean | null>(null);
+    const userRef = useRef(user);
+    const isGuestRef = useRef(isGuest);
+    userRef.current = user;
+    isGuestRef.current = isGuest;
+
+    const applyAccess = useCallback((guest: boolean, nextUser: any) => {
+        setIsGuest(prev => (prev === guest ? prev : guest));
+        setUser(prev =>
+            userSignature(prev) === userSignature(nextUser) ? prev : nextUser,
+        );
+    }, []);
 
     useFocusEffect(
         useCallback(() => {
             let cancelled = false;
+            let acquiredNetwork = false;
+            let finished = false;
 
             const loadUser = async () => {
                 try {
-                    // Already have a full profile on this session — don't re-hit API every focus
-                    if (
-                        user &&
-                        isGuest === false &&
-                        !shouldRunThrottled('profile-page-access', 90_000)
-                    ) {
-                        return;
-                    }
-
                     const token = await Utils.getData('_TOKEN');
+                    if (cancelled) return;
                     if (!token) {
-                        if (!cancelled) {
-                            setIsGuest(true);
-                            setUser(null);
-                        }
+                        applyAccess(true, null);
+                        finished = true;
                         return;
                     }
 
-                    // Same readiness check used by requireAuth / CompleteDetails
+                    // Paint from storage first so rows are tappable before the network returns
+                    const cached = await Utils.getData('_USER_INFO');
+                    if (cancelled) return;
+                    const guestFlag = await isGuestUser();
+                    if (cancelled) return;
+                    if (guestFlag && !isProfileComplete(cached)) {
+                        applyAccess(true, null);
+                    } else if (cached) {
+                        applyAccess(false, cached);
+                    }
+
+                    const allowNetwork = shouldRunThrottled(PROFILE_REFRESH_KEY, 8_000);
+                    acquiredNetwork = allowNetwork;
+                    if (!allowNetwork) {
+                        finished = true;
+                        return;
+                    }
+
                     const { level, profile, isComplete } =
                         await resolveAccessLikeProfile();
-
                     if (cancelled) return;
 
                     if (isComplete || level === 'full' || isProfileComplete(profile)) {
-                        await promoteToFullUser();
-                        if (!cancelled) {
-                            setIsGuest(false);
-                            setUser(profile);
+                        if (isGuestRef.current !== false) {
+                            await promoteToFullUser();
                         }
+                        if (cancelled) return;
+                        applyAccess(false, profile);
+                        finished = true;
                         return;
                     }
 
                     const guest = level === 'guest' && (await isGuestUser());
-                    if (!cancelled) {
-                        setIsGuest(guest);
-                        setUser(guest ? null : profile);
-                    }
+                    if (cancelled) return;
+                    applyAccess(!!guest, guest ? null : profile);
+                    finished = true;
                 } catch (error) {
                     console.log('Profile access resolve error:', error);
-                    if (!cancelled) {
-                        // Prefer full UI if we already have cached user info
-                        const cached = await Utils.getData('_USER_INFO');
-                        if (isProfileComplete(cached) || cached?.first_name) {
+                    finished = true;
+                    if (cancelled) return;
+                    const cached = await Utils.getData('_USER_INFO');
+                    if (isProfileComplete(cached) || cached?.first_name) {
+                        if (isGuestRef.current !== false) {
                             await promoteToFullUser();
-                            setIsGuest(false);
-                            setUser(cached);
-                        } else {
-                            const guest = await isGuestUser();
-                            setIsGuest(guest);
-                            setUser(guest ? null : cached);
                         }
+                        if (!cancelled) applyAccess(false, cached);
+                    } else if (!userRef.current) {
+                        const guest = await isGuestUser();
+                        if (!cancelled) applyAccess(!!guest, guest ? null : cached);
                     }
                 }
             };
@@ -1141,168 +233,112 @@ const ProfilePage = ({ navigation }: any) => {
             loadUser();
             return () => {
                 cancelled = true;
+                // A blur mid-request must not burn the throttle window
+                if (acquiredNetwork && !finished) {
+                    clearThrottle(PROFILE_REFRESH_KEY);
+                }
             };
-        }, [user, isGuest])
+        }, [applyAccess]),
     );
 
-    const logout = () => setLogoutVisible(true);
+    const openLogout = useCallback(() => setLogoutVisible(true), []);
+    const openingRef = useRef(false);
 
-    const accountMenu: MenuEntry[] = [
-        { id: 1, title: 'My Orders', icon: 'receipt' },
-        { id: 2, title: 'My Consultations', icon: 'calendar' },
-        { id: 3, title: 'Medical Records', icon: 'file-medical' },
-        { id: 4, title: 'Patient Details', icon: 'users' },
-        { id: 5, title: 'Saved Address', icon: 'map-pin' },
-        { id: 6, title: 'Favourite Doctor', icon: 'heart' },
-        { id: 7, title: 'Wishlist', icon: 'heart-filled' },
-        { id: 8, title: 'My Rewards', icon: 'trophy' },
-        { id: 9, title: 'Cart', icon: 'shopping-cart' },
-    ];
+    const openScreen = useCallback(
+        (screen: string) => {
+            if (openingRef.current) return;
+            openingRef.current = true;
+            openHomeStackScreen(navigation, screen);
+            setTimeout(() => {
+                openingRef.current = false;
+            }, 450);
+        },
+        [navigation],
+    );
 
-    const preferenceMenu: MenuEntry[] = [
-        { id: 10, title: 'Payments', icon: 'credit-card' },
-        { id: 11, title: 'Settings', icon: 'settings' },
-        { id: 12, title: 'Privacy Center', icon: 'shield' },
-        { id: 13, title: 'Need help?', icon: 'help' },
-    ];
+    const handleNavigation = useCallback(
+        (item: MenuEntry) => {
+            switch (item.title) {
+                case 'Patient Details':
+                    openScreen('PatientDetails');
+                    break;
+                case 'My Consultations':
+                case 'My Appointments':
+                    openScreen('Appointments');
+                    break;
+                case 'My Orders':
+                case 'Order History':
+                    openScreen('OrderHistory');
+                    break;
+                case 'Saved Address':
+                    openScreen('ManageAdrees');
+                    break;
+                case 'Medical Records':
+                    openScreen('MedicalRecords');
+                    break;
+                case 'Favourite Doctor':
+                    openScreen('FavDoctors');
+                    break;
+                case 'Wishlist':
+                    openScreen('Wishlist');
+                    break;
+                case 'My Rewards':
+                    openScreen('Rewards');
+                    break;
+                case 'Mentor':
+                    openScreen('Mentor');
+                    break;
+                case 'Cart':
+                    openScreen('MyCart');
+                    break;
+                case 'My Plans':
+                    openScreen('MyPlansScreen');
+                    break;
+                case 'Payments':
+                    openScreen('PaymentsScreen');
+                    break;
+                case 'Settings':
+                    openScreen('Settings');
+                    break;
+                case 'Privacy Center':
+                    openScreen('PrivacyCenter');
+                    break;
+                case 'Feedback & Information':
+                    openScreen('FeedbackInformation');
+                    break;
+                case 'Need help?':
+                case 'FAQ':
+                    openScreen('HelpCenterScreen');
+                    break;
+                default:
+                    break;
+            }
+        },
+        [openScreen],
+    );
 
-    const exploreItems: ExploreItem[] = [
-        {
-            id: 'doctors',
-            title: 'Doctors',
-            subtitle: 'Browse experts',
-            icon: 'stethoscope',
-            color: '#0D614E',
-            bg: '#E8F3F1',
-            onPress: () => stackNav.navigate('AllDoctors', { all: true }),
-        },
-        {
-            id: 'medicines',
-            title: 'Medicines',
-            subtitle: 'Ayurvedic care',
-            icon: 'pill',
-            color: '#B45309',
-            bg: '#FEF3C7',
-            onPress: () => navigation.navigate('Medicine'),
-        },
-        {
-            id: 'products',
-            title: 'Products',
-            subtitle: 'Wellness picks',
-            icon: 'package',
-            color: '#1D4ED8',
-            bg: '#DBEAFE',
-            onPress: () => navigation.navigate('Products'),
-        },
-        {
-            id: 'yoga',
-            title: 'Yoga',
-            subtitle: 'Sessions',
-            icon: 'mood-smile',
-            color: '#7C3AED',
-            bg: '#EDE9FE',
-            onPress: () => stackNav.navigate('YogaScreen'),
-        },
-        {
-            id: 'diet',
-            title: 'Diet Plan',
-            subtitle: 'Personalized',
-            icon: 'spoon',
-            color: '#059669',
-            bg: '#D1FAE5',
-            onPress: () => stackNav.navigate('DietScreen'),
-        },
-        {
-            id: 'prakriti',
-            title: 'Prakriti',
-            subtitle: 'Know your type',
-            icon: 'ingredient',
-            color: '#0F766E',
-            bg: '#CCFBF1',
-            onPress: () => stackNav.navigate('PrakritiProfile'),
-        },
-    ];
-
-    const handleNavigation = (item: MenuEntry) => {
-        switch (item.title) {
-            case 'Patient Details':
-                stackNav.navigate('PatientDetails');
-                break;
-            case 'My Consultations':
-            case 'My Appointments':
-                stackNav.navigate('Appointments');
-                break;
-            case 'My Orders':
-            case 'Order History':
-                stackNav.navigate('OrderHistory');
-                break;
-            case 'Saved Address':
-                stackNav.navigate('ManageAdrees');
-                break;
-            case 'Medical Records':
-                stackNav.navigate('MedicalRecords');
-                break;
-            case 'Favourite Doctor':
-                stackNav.navigate('FavDoctors');
-                break;
-            case 'Wishlist':
-                stackNav.navigate('Wishlist');
-                break;
-            case 'My Rewards':
-                stackNav.navigate('Rewards');
-                break;
-            case 'Mentor':
-                stackNav.navigate('Mentor');
-                break;
-            case 'Cart':
-                stackNav.navigate('MyCart');
-                break;
-            case 'Payments':
-                stackNav.navigate('PaymentsScreen');
-                break;
-            case 'Settings':
-                stackNav.navigate('Settings');
-                break;
-            case 'Privacy Center':
-                stackNav.navigate('PrivacyCenter');
-                break;
-            case 'Feedback & Information':
-                stackNav.navigate('FeedbackInformation');
-                break;
-            case 'Need help?':
-            case 'FAQ':
-                stackNav.navigate('HelpCenterScreen');
-                break;
-            default:
-                break;
-        }
-    };
-
-    const handleLogout = async () => {
+    const handleLogout = useCallback(async () => {
         setLogoutVisible(false);
         await signOutToChangeNumber(navigation, { clearLocationSession });
-    };
+    }, [navigation, clearLocationSession]);
 
-    const MenuItem = ({ item, isLast }: { item: MenuEntry; isLast?: boolean }) => (
-        <TouchableOpacity
-            style={[styles.card, isLast && styles.cardLast]}
-            activeOpacity={0.7}
-            onPress={() => handleNavigation(item)}
-        >
-            <View style={[styles.iconContainer, { backgroundColor: '#E8F3F1' }]}>
-                <TablerIcon name={item.icon} size={18} color="#1B5E54" />
-            </View>
-            <Text style={styles.menuTitle}>{item.title}</Text>
-            <TablerIcon name="chevron-right" size={18} color="#CBD5E1" />
-        </TouchableOpacity>
-    );
-
-    const Section = ({ title, children }: any) => (
-        <View style={styles.wrapper}>
-            <Text style={styles.sectionTitle}>{title}</Text>
-            <View style={styles.menuGroup}>{children}</View>
-        </View>
-    );
+    const refreshUser = useCallback(async () => {
+        try {
+            const res: any = await ProfileServices.user_profile();
+            if (res?.status === 200 || res?.success) {
+                const next = res?.data ?? res;
+                if (next) {
+                    applyAccess(false, next);
+                    await Utils.storeData('_USER_INFO', next);
+                }
+                return;
+            }
+        } catch {
+            // fall through to cache
+        }
+        const info = await Utils.getData('_USER_INFO');
+        if (info) applyAccess(false, info);
+    }, [applyAccess]);
 
     if (isGuest === null) {
         return (
@@ -1348,6 +384,8 @@ const ProfilePage = ({ navigation }: any) => {
                 <View style={styles.guestRoot}>
                     <ScrollView
                         showsVerticalScrollIndicator={false}
+                        keyboardShouldPersistTaps="handled"
+                        removeClippedSubviews={false}
                         contentContainerStyle={[
                             styles.guestScroll,
                             { paddingBottom: tabClearance + 16 },
@@ -1429,9 +467,8 @@ const ProfilePage = ({ navigation }: any) => {
                                     </View>
                                 ))}
 
-                                <TouchableOpacity
+                                <Pressable
                                     style={styles.guestCta}
-                                    activeOpacity={0.9}
                                     onPress={() =>
                                         navigateToCompleteDetails(
                                             'Complete your profile and prakriti assessment to continue.',
@@ -1447,7 +484,7 @@ const ProfilePage = ({ navigation }: any) => {
                                         <Text style={styles.guestCtaText}>Complete details</Text>
                                         <TablerIcon name="arrow-right" size={18} color="#FFFFFF" />
                                     </LinearGradient>
-                                </TouchableOpacity>
+                                </Pressable>
                             </View>
 
                             <Text style={styles.guestLockedLabel}>Waiting behind the lock</Text>
@@ -1463,14 +500,13 @@ const ProfilePage = ({ navigation }: any) => {
                                 ))}
                             </View>
 
-                            <TouchableOpacity
+                            <Pressable
                                 style={styles.guestExitBtn}
-                                onPress={logout}
-                                activeOpacity={0.85}
+                                onPress={openLogout}
                             >
                                 <TablerIcon name="logout" size={16} color="#8B6B6B" />
                                 <Text style={styles.guestExitText}>Sign out of guest session</Text>
-                            </TouchableOpacity>
+                            </Pressable>
                         </View>
                     </ScrollView>
                 </View>
@@ -1511,59 +547,39 @@ const ProfilePage = ({ navigation }: any) => {
                         { paddingBottom: tabClearance },
                     ]}
                     keyboardShouldPersistTaps="handled"
+                    keyboardDismissMode="on-drag"
+                    removeClippedSubviews={false}
+                    nestedScrollEnabled={false}
                 >
 
                     <ProfileHeader
                         user={user}
                         navigation={navigation}
-                        onUserUpdated={async () => {
-                            try {
-                                const res: any =
-                                    await ProfileServices.user_profile();
-                                if (res?.status === 200 || res?.success) {
-                                    const next = res?.data ?? res;
-                                    if (next) {
-                                        setUser(next);
-                                        await Utils.storeData('_USER_INFO', next);
-                                    }
-                                    return;
-                                }
-                            } catch {
-                                // fall through to cache
-                            }
-                            const info = await Utils.getData('_USER_INFO');
-                            if (info) setUser(info);
-                        }}
+                        onUserUpdated={refreshUser}
                     />
 
-                    <Section title="My care">
-                        {accountMenu.map((item, index) => (
-                            <MenuItem
-                                key={item.id}
-                                item={item}
-                                isLast={index === accountMenu.length - 1}
-                            />
-                        ))}
-                    </Section>
+                    <MenuSection
+                        title="My care"
+                        items={accountMenu}
+                        onPress={handleNavigation}
+                    />
 
-                    <Section title="Preferences">
-                        {preferenceMenu.map((item, index) => (
-                            <MenuItem
-                                key={item.id}
-                                item={item}
-                                isLast={index === preferenceMenu.length - 1}
-                            />
-                        ))}
-                    </Section>
+                    <MenuSection
+                        title="Preferences"
+                        items={preferenceMenu}
+                        onPress={handleNavigation}
+                    />
 
-                    <TouchableOpacity
-                        style={styles.logoutBtn}
-                        onPress={logout}
-                        activeOpacity={0.8}
+                    <Pressable
+                        style={({ pressed }) => [
+                            styles.logoutBtn,
+                            pressed && styles.logoutBtnPressed,
+                        ]}
+                        onPress={openLogout}
                     >
                         <TablerIcon name="logout" size={18} color={Colors.errorColor} />
                         <Text style={styles.logoutText}>Logout</Text>
-                    </TouchableOpacity>
+                    </Pressable>
 
                     <Text style={styles.version}>APP VERSION 1.0</Text>
                 </ScrollView>
@@ -1886,6 +902,9 @@ const styles = StyleSheet.create({
     cardLast: {
         borderBottomWidth: 0,
     },
+    cardPressed: {
+        backgroundColor: '#F4F8F7',
+    },
     cardLocked: {
         backgroundColor: '#FAFAFA',
     },
@@ -1931,6 +950,9 @@ const styles = StyleSheet.create({
         backgroundColor: '#FEF2F2',
         borderWidth: 1,
         borderColor: '#FFCECE',
+    },
+    logoutBtnPressed: {
+        backgroundColor: '#FDE8E8',
     },
     logoutText: {
         fontSize: 14,

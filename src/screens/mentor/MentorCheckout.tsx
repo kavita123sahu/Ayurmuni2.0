@@ -12,9 +12,6 @@ import PaymentPlan from "./PaymentPlan";
 import TablerIcon, { TablerIconName } from '../../components/TablerIcon';
 import { RupeeAmount } from '../../utils/currencyUtils';
 
-
-
-
 export default function CheckoutScreen(props: any) {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [showEMI, setShowEMI] = useState(false);
@@ -38,7 +35,6 @@ export default function CheckoutScreen(props: any) {
       useNativeDriver: true,
     }).start(() => setShowEMI(false));
   };
-
 
   const insets = useSafeAreaInsets();
 
@@ -87,8 +83,6 @@ export default function CheckoutScreen(props: any) {
 
   const [activeId, setActiveId] = useState("1");
 
-
-
   useEffect(() => {
     const backAction = () => {
       if (showEMI) {
@@ -105,7 +99,6 @@ export default function CheckoutScreen(props: any) {
 
     return () => backHandler.remove();
   }, [showEMI]);
-
 
   const SummaryCard = () => {
     return (
@@ -148,7 +141,6 @@ export default function CheckoutScreen(props: any) {
 
   };
 
-  
   return (
     <SafeAreaView style={styles.container}>
 
@@ -156,7 +148,6 @@ export default function CheckoutScreen(props: any) {
 
       <AppHeader title="Checkout"
  onLeftPress={() => props.navigation.goBack()} />
-
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{
         paddingHorizontal: 20, backgroundColor: Colors.background, paddingBottom: insets.bottom + 20, // 👈 dynamic padding
@@ -193,7 +184,6 @@ export default function CheckoutScreen(props: any) {
             ))}
         </View>
 
-
         <View style={styles.section}>
 
           <SectionHeader title="Payment Method" actionText="+ Add New" />
@@ -208,7 +198,6 @@ export default function CheckoutScreen(props: any) {
             />
           ))}
         </View>
-
 
         <SummaryCard />
 
@@ -237,8 +226,6 @@ export default function CheckoutScreen(props: any) {
 
   );
 }
-
-
 
 const styles = StyleSheet.create({
   container: {

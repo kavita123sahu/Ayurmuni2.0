@@ -56,8 +56,6 @@ type MealProps = {
     item: any;
 };
 
-
-
 const WeeklyMeal = (props: any) => {
 
     const dates = generateDates();
@@ -78,8 +76,6 @@ const WeeklyMeal = (props: any) => {
                     </View>
                     <Text style={styles.mealName}>{item.name}</Text>
 
-
-
                     <View style={styles.tagRow}>
                         <View style={styles.tag}>
                             <Text style={styles.tagText}>High Fiber</Text>
@@ -90,11 +86,9 @@ const WeeklyMeal = (props: any) => {
                     </View>
                 </View>
 
-
             </View>
         );
     };
-
 
     const WeeklyPlanner = () => {
         return (
@@ -133,7 +127,6 @@ const WeeklyMeal = (props: any) => {
                 title="Meal Details"
                 onLeftPress={() => props.navigation.goBack()}
             />
-
 
             <ScrollView style={styles.maincontainer} showsHorizontalScrollIndicator={false}>
                 <Text style={styles.title}>Weekly Planner</Text>
@@ -187,7 +180,6 @@ const WeeklyMeal = (props: any) => {
 
             </ScrollView>
 
-
             <TouchableOpacity style={styles.button} onPress={() => props.navigation.navigate('YogaSession')}>
                 <TablerIcon name="spoon" size={16} color={'#ffff'} />
                 <Text style={styles.buttonText}>Smart Auto-Fill Week</Text>
@@ -198,7 +190,6 @@ const WeeklyMeal = (props: any) => {
 };
 
 export default WeeklyMeal;
-
 
 const styles = StyleSheet.create({
 
@@ -338,11 +329,7 @@ const styles = StyleSheet.create({
     daysRow: {
         marginVertical: 20,
 
-
     },
-
-
-
 
     sectionTitle: {
         fontSize: 18,

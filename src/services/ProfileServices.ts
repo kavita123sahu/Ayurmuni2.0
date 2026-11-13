@@ -1,7 +1,6 @@
 
 import { apiClient } from "./APIconfig";
 
-
 export const update_Profile = async (data: any) => {
     try {
         const response = await apiClient('customers/profile/', {
@@ -15,12 +14,12 @@ export const update_Profile = async (data: any) => {
     }
 }
 
-
 export const user_profile = async () => {
     try {
         const response = await apiClient('customers/profile/', {
             method: 'GET',
         });
+        console.log("responseuserporfileee", response);
         return response;
     } catch (error) {
         throw error;
@@ -147,7 +146,6 @@ export const createDoctorReview = async (
     }
 };
 
-
 /**
  * POST create review:
  *   review/?entity_type=doctor
@@ -270,7 +268,6 @@ export const createReview = async ({
   }
 };
 
-
 export const UploadProfilePhoto = async (data: FormData) => {
     try {
         const response = await apiClient('user/upload/', {
@@ -283,9 +280,6 @@ export const UploadProfilePhoto = async (data: FormData) => {
         throw error;
     }
 }
-
-
-
 
 export const getAddresses = async () => {
     try {
@@ -312,7 +306,6 @@ export const AddAddresses = async (data: any) => {
     }
 };
 
-
 export const UpdateAddresses = async (AddressID: any, data: any) => {
     try {
         const response = await apiClient(`customers/address/?id=${AddressID}`, {
@@ -336,12 +329,12 @@ export const DeleteAddresses = async (AddressID: any) => {
     }
 };
 
-
 export const get_prakriti_info = async () => {
     try {
         const response = await apiClient(`customers/prakriti/info/`, {
             method: 'GET',
         });
+        console.log("get_prakriti_info", response);
         return response;
     } catch (error) {
         throw error;

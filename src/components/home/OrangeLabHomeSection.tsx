@@ -220,7 +220,8 @@ const styles = StyleSheet.create({
     lineHeight: 16,
     color: '#0F172A',
     fontFamily: Fonts.PoppinsSemiBold,
-    // minHeight: 32,
+    height: 32,
+    includeFontPadding: false,
   },
   tests: {
     marginTop: 2,

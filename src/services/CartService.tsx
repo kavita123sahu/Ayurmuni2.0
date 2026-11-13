@@ -2,7 +2,6 @@ import { Utils } from "../common/Utils";
 import { BaseUrl, Method } from "../config/Key";
 import { apiClient } from "./APIconfig";
 
-
 export const AddupdateCart = async ({
     variant_id,
     quantity,
@@ -48,8 +47,6 @@ export const AddupdateCart = async ({
         throw error;
     }
 };
-
-
 
 /** True when cart/prescription line (or its variant) is marked out of stock by API. */
 export const isCartLineOutOfStock = (it: any): boolean => {

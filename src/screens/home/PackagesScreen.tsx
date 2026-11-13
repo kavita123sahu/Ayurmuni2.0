@@ -1,291 +1,377 @@
-import React, { useMemo } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
+  ActivityIndicator,
   FlatList,
-  Pressable,
-  Image,
+  RefreshControl,
+  ScrollView,
   StatusBar,
-  Dimensions,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
-import LinearGradient from 'react-native-linear-gradient';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
 import { Fonts } from '../../common/Fonts';
 import { Colors } from '../../common/Colors';
 import AppHeader from '../../components/AppHeader';
-import { RupeeAmount } from '../../utils/currencyUtils';
-import {
-  DUMMY_CONSULT_PACKAGES,
-  type ConsultPackageDummy,
-} from '../../data/homeDummySections';
+import TablerIcon from '../../components/TablerIcon';
+import PackagePlanCard from '../../components/packages/PackagePlanCard';
+import PackagePlanDetailSheet from '../../components/packages/PackagePlanDetailSheet';
+import CarePlansPromoCard from '../../components/packages/CarePlansPromoCard';
+import { isCarePlan } from '../../components/packages/packageUi';
+import { usePackagePlans } from '../../hooks/usePackagePlans';
+import { usePackagePurchase } from '../../hooks/usePackagePurchase';
+import { useActivePlans } from '../../hooks/useActivePlans';
+import PlanTransferConfirmModal from '../../components/packages/PlanTransferConfirmModal';
+import PackagePaymentGatewaySheet from '../../components/packages/PackagePaymentGatewaySheet';
+import type { PackagePlan } from '../../services/PackageServices';
 import { SCREEN_PADDING_H } from '../../constants/layout';
+import {
+  navigateToCompleteDetails,
+  requireAuth,
+  resolveAccessLikeProfile,
+} from '../../services/guestAuth';
 
-const HERO_IMG =
-  'https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?auto=format&fit=crop&w=900&q=80';
+const ALL = 'All';
+const PROFILE_GATE_MESSAGE =
+  'Complete your profile to continue with care plans.';
 
-const GAP = 10;
-const CARD_W =
-  (Dimensions.get('window').width - SCREEN_PADDING_H * 2 - GAP) / 2;
-
-function PackageGridCard({ item }: { item: ConsultPackageDummy }) {
-  const off =
-    item.mrp && item.mrp > item.price
-      ? Math.round(((item.mrp - item.price) / item.mrp) * 100)
-      : 0;
-
-  return (
-    <Pressable style={({ pressed }) => [styles.card, pressed && styles.pressed]}>
-      <View style={styles.imgWrap}>
-        <Image source={{ uri: item.image }} style={styles.img} />
-        {item.badge ? (
-          <View style={styles.badge}>
-            <Text style={styles.badgeText}>{item.badge}</Text>
-          </View>
-        ) : null}
-        {off > 0 ? (
-          <View style={styles.offPill}>
-            <Text style={styles.offPillText}>{off}% OFF</Text>
-          </View>
-        ) : null}
-      </View>
-
-      <View style={styles.body}>
-        <Text style={styles.group} numberOfLines={1}>
-          {item.group}
-        </Text>
-        <Text style={styles.name} numberOfLines={2}>
-          {item.name}
-        </Text>
-        <Text style={styles.hint} numberOfLines={1}>
-          {item.includes[0]}
-          {item.includes.length > 1 ? ` · +${item.includes.length - 1}` : ''}
-        </Text>
-
-        <View style={styles.priceRow}>
-          <RupeeAmount
-            value={item.price}
-            style={styles.price}
-            iconColor="#111827"
-          />
-          {item.mrp && item.mrp > item.price ? (
-            <RupeeAmount
-              value={item.mrp}
-              style={styles.mrp}
-              iconColor="#94A3B8"
-            />
-          ) : null}
-        </View>
-
-        <Pressable style={styles.bookBtn}>
-          <Text style={styles.bookText}>BOOK</Text>
-        </Pressable>
-      </View>
-    </Pressable>
-  );
-}
-
-/** Full packages — compact Tata 1mg–style 2-col grid (dummy). */
 export default function PackagesScreen(props: any) {
+  const { navigation, route } = props;
   const insets = useSafeAreaInsets();
-  const data = useMemo(() => DUMMY_CONSULT_PACKAGES, []);
+  const { plans, loading, loadingMore, refreshing, error, loadMore, refresh } =
+    usePackagePlans();
+  const {
+    startPlan,
+    processingId,
+    transferPrompt,
+    confirmTransfer,
+    cancelTransfer,
+    payPlan,
+    confirmGatewayPay,
+    cancelGatewayPay,
+  } = usePackagePurchase(navigation);
+  const { ownsPackage } = useActivePlans();
+
+  const [category, setCategory] = useState(ALL);
+  const [selected, setSelected] = useState<PackagePlan | null>(null);
+  const [pendingPlanId, setPendingPlanId] = useState<string | undefined>(
+    route?.params?.planId,
+  );
+  const [profileComplete, setProfileComplete] = useState<boolean | null>(null);
+
+  const refreshProfileStatus = useCallback(async () => {
+    try {
+      const { isComplete } = await resolveAccessLikeProfile();
+      setProfileComplete(isComplete);
+    } catch {
+      setProfileComplete(false);
+    }
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      void refreshProfileStatus();
+      refresh();
+    }, [refreshProfileStatus, refresh]),
+  );
+
+  useEffect(() => {
+    if (profileComplete === false) {
+      // Incomplete profile: send to Complete Your Profile first
+      navigateToCompleteDetails(PROFILE_GATE_MESSAGE);
+    }
+  }, [profileComplete]);
+
+  useEffect(() => {
+    if (profileComplete !== true || !pendingPlanId || plans.length === 0) return;
+    const match = plans.find(plan => plan.id === pendingPlanId);
+    if (match) setSelected(match);
+    setPendingPlanId(undefined);
+  }, [pendingPlanId, plans, profileComplete]);
+
+  const categories = useMemo(() => {
+    const names = plans.map(plan => plan.category_name).filter(Boolean);
+    return [ALL, ...Array.from(new Set(names))];
+  }, [plans]);
+
+  const visiblePlans = useMemo(() => {
+    const list =
+      category === ALL ? plans : plans.filter(p => p.category_name === category);
+    return [...list].sort(
+      (a, b) => Number(isCarePlan(b)) - Number(isCarePlan(a)),
+    );
+  }, [plans, category]);
+
+  const openPlan = useCallback(
+    async (plan: PackagePlan) => {
+      const ok = await requireAuth(PROFILE_GATE_MESSAGE);
+      if (!ok) {
+        setSelected(null);
+        setProfileComplete(false);
+        return;
+      }
+      setProfileComplete(true);
+      setSelected(plan);
+    },
+    [],
+  );
+
+  const onCta = useCallback(
+    async (plan: PackagePlan) => {
+      setSelected(null);
+      const ok = await requireAuth(PROFILE_GATE_MESSAGE);
+      if (!ok) {
+        setProfileComplete(false);
+        return;
+      }
+      setProfileComplete(true);
+      startPlan(plan);
+    },
+    [startPlan],
+  );
+
+  const listHeader = (
+    <View>
+      {profileComplete === false ? (
+        <TouchableOpacity
+          activeOpacity={0.9}
+          style={styles.profileGate}
+          onPress={() => navigateToCompleteDetails(PROFILE_GATE_MESSAGE)}
+        >
+          <View style={styles.profileGateIcon}>
+            <TablerIcon name="user" size={18} color={Colors.primaryColor} />
+          </View>
+          <View style={styles.profileGateCopy}>
+            <Text style={styles.profileGateTitle}>Complete your profile</Text>
+            <Text style={styles.profileGateSub}>
+              Finish your details to purchase any care plan.
+            </Text>
+          </View>
+          <TablerIcon name="chevron-right" size={18} color={Colors.primaryColor} />
+        </TouchableOpacity>
+      ) : null}
+
+      <CarePlansPromoCard
+        onMyPlansPress={() => navigation.navigate('MyPlansScreen')}
+      />
+
+      {categories.length > 2 ? (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.chips}
+        >
+          {categories.map(name => {
+            const active = name === category;
+            return (
+              <TouchableOpacity
+                key={name}
+                activeOpacity={0.85}
+                onPress={() => setCategory(name)}
+                style={[styles.chip, active && styles.chipActive]}
+              >
+                <Text style={[styles.chipText, active && styles.chipTextActive]}>
+                  {name}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+      ) : null}
+
+      {!loading && visiblePlans.length > 0 ? (
+        <Text style={styles.countText}>
+          {visiblePlans.length} plan{visiblePlans.length > 1 ? 's' : ''} available
+        </Text>
+      ) : null}
+    </View>
+  );
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
+    <SafeAreaView style={styles.safe} edges={['top', 'left', 'right', 'bottom']}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
-      <AppHeader
-        title="Consultation Packages"
-        onLeftPress={() => props.navigation.goBack()}
-      />
+      <AppHeader title="Care Plans" onLeftPress={() => navigation.goBack()} />
+
       <FlatList
-        data={data}
+        data={visiblePlans}
         keyExtractor={item => item.id}
-        numColumns={2}
-        columnWrapperStyle={styles.row}
-        ListHeaderComponent={
-          <View style={styles.headerBlock}>
-            <View style={styles.hero}>
-              <Image source={{ uri: HERO_IMG }} style={styles.heroImg} />
-              <LinearGradient
-                colors={['transparent', 'rgba(15,118,110,0.9)']}
-                style={styles.heroOverlay}
-              >
-                <Text style={styles.heroEyebrow}>AYURVEDIC CARE</Text>
-                <Text style={styles.heroTitle}>Plans that fit your journey</Text>
-                <Text style={styles.heroSub} numberOfLines={1}>
-                  Consult · Diet · Long-term wellness
-                </Text>
-              </LinearGradient>
-            </View>
-            <Text style={styles.blockTitle}>All packages</Text>
-          </View>
-        }
-        renderItem={({ item }) => <PackageGridCard item={item} />}
         contentContainerStyle={[
-          styles.list,
-          { paddingBottom: Math.max(insets.bottom, 20) + 12 },
+          styles.listContent,
+          { paddingBottom: insets.bottom + 24 },
         ]}
-        showsVerticalScrollIndicator={false}
+        ListHeaderComponent={listHeader}
+        ItemSeparatorComponent={() => <View style={styles.separator} />}
+        renderItem={({ item }) => (
+          <PackagePlanCard
+            plan={item}
+            onPress={openPlan}
+            onPressCta={openPlan}
+            processing={processingId === item.id}
+            owned={ownsPackage(item.id)}
+          />
+        )}
+        onEndReachedThreshold={0.4}
+        onEndReached={loadMore}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={() => {
+              void refreshProfileStatus();
+              refresh();
+            }}
+            colors={[Colors.primaryColor]}
+            tintColor={Colors.primaryColor}
+          />
+        }
+        ListEmptyComponent={
+          loading || profileComplete === null ? (
+            <View style={styles.center}>
+              <ActivityIndicator color={Colors.primaryColor} />
+            </View>
+          ) : (
+            <View style={styles.center}>
+              <TablerIcon name="package" size={36} color="#9AB3AA" />
+              <Text style={styles.emptyTitle}>
+                {error ? 'Could not load plans' : 'No plans available'}
+              </Text>
+              <Text style={styles.emptySub}>
+                {error
+                  ? 'Pull down to try again.'
+                  : 'New care plans will appear here soon.'}
+              </Text>
+            </View>
+          )
+        }
+        ListFooterComponent={
+          loadingMore ? (
+            <ActivityIndicator
+              style={styles.footerLoader}
+              color={Colors.primaryColor}
+            />
+          ) : null
+        }
+      />
+
+      <PackagePlanDetailSheet
+        plan={selected}
+        processing={!!selected && processingId === selected.id}
+        owned={!!selected && ownsPackage(selected.id)}
+        onClose={() => setSelected(null)}
+        onCta={onCta}
+      />
+
+      <PlanTransferConfirmModal
+        prompt={transferPrompt}
+        onYes={confirmTransfer}
+        onNo={cancelTransfer}
+      />
+
+      <PackagePaymentGatewaySheet
+        visible={!!payPlan}
+        plan={payPlan}
+        processing={!!payPlan && processingId === payPlan.id}
+        onClose={cancelGatewayPay}
+        onConfirm={confirmGatewayPay}
       />
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#FFFFFF' },
-  list: {
+  safe: {
+    flex: 1,
+    backgroundColor: '#F7FAF9',
+  },
+  listContent: {
     paddingHorizontal: SCREEN_PADDING_H,
     paddingTop: 8,
-    backgroundColor: '#F4FBF7',
   },
-  headerBlock: {
-    marginBottom: 8,
-  },
-  hero: {
-    height: 132,
-    borderRadius: 14,
-    overflow: 'hidden',
-    backgroundColor: '#D1FAE5',
-    marginBottom: 12,
-  },
-  heroImg: {
-    ...StyleSheet.absoluteFillObject,
-    width: '100%',
-    height: '100%',
-  },
-  heroOverlay: {
-    flex: 1,
-    justifyContent: 'flex-end',
-    paddingHorizontal: 14,
-    paddingBottom: 12,
-  },
-  heroEyebrow: {
-    fontSize: 9,
-    letterSpacing: 0.7,
-    color: 'rgba(209,250,229,0.95)',
-    fontFamily: Fonts.PoppinsSemiBold,
-  },
-  heroTitle: {
-    marginTop: 2,
-    fontSize: 17,
-    lineHeight: 22,
-    color: '#FFFFFF',
-    fontFamily: Fonts.PoppinsSemiBold,
-  },
-  heroSub: {
-    marginTop: 2,
-    fontSize: 11,
-    color: 'rgba(236,253,245,0.92)',
-    fontFamily: Fonts.PoppinsRegular,
-  },
-  blockTitle: {
-    fontSize: 15,
-    color: '#0F172A',
-    fontFamily: Fonts.PoppinsSemiBold,
-  },
-  row: {
-    gap: GAP,
-    marginBottom: GAP,
-  },
-  card: {
-    width: CARD_W,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#DCEFE6',
-    overflow: 'hidden',
-  },
-  pressed: { opacity: 0.94 },
-  imgWrap: {
-    width: '100%',
-    height: 96,
-    backgroundColor: '#ECFDF5',
-  },
-  img: {
-    width: '100%',
-    height: '100%',
-  },
-  badge: {
-    position: 'absolute',
-    top: 6,
-    left: 6,
-    backgroundColor: '#15803D',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
-  },
-  badgeText: {
-    fontSize: 9,
-    color: '#FFFFFF',
-    fontFamily: Fonts.PoppinsSemiBold,
-  },
-  offPill: {
-    position: 'absolute',
-    bottom: 6,
-    right: 6,
-    backgroundColor: 'rgba(15,23,42,0.78)',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
-  },
-  offPillText: {
-    fontSize: 9,
-    color: '#FFFFFF',
-    fontFamily: Fonts.PoppinsSemiBold,
-  },
-  body: {
-    paddingHorizontal: 8,
-    paddingTop: 8,
-    paddingBottom: 8,
-  },
-  group: {
-    fontSize: 9,
-    color: '#64748B',
-    fontFamily: Fonts.PoppinsMedium,
-  },
-  name: {
-    marginTop: 2,
-    fontSize: 12,
-    lineHeight: 16,
-    minHeight: 32,
-    color: '#0F172A',
-    fontFamily: Fonts.PoppinsSemiBold,
-  },
-  hint: {
-    marginTop: 2,
-    fontSize: 10,
-    color: '#64748B',
-    fontFamily: Fonts.PoppinsRegular,
-  },
-  priceRow: {
-    marginTop: 6,
+  profileGate: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
+    gap: 12,
+    backgroundColor: '#EAF8F4',
+    borderWidth: 1,
+    borderColor: '#D7E8E1',
+    borderRadius: 16,
+    padding: 14,
+    marginBottom: 14,
   },
-  price: {
-    fontSize: 13,
-    color: '#111827',
-    fontFamily: Fonts.PoppinsSemiBold,
-  },
-  mrp: {
-    fontSize: 10,
-    color: '#94A3B8',
-    fontFamily: Fonts.PoppinsRegular,
-    textDecorationLine: 'line-through',
-  },
-  bookBtn: {
-    marginTop: 8,
-    borderWidth: 1.5,
-    borderColor: Colors.primaryColor,
-    borderRadius: 8,
+  profileGateIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#FFFFFF',
     alignItems: 'center',
-    paddingVertical: 6,
+    justifyContent: 'center',
   },
-  bookText: {
-    fontSize: 11,
-    color: Colors.primaryColor,
+  profileGateCopy: {
+    flex: 1,
+  },
+  profileGateTitle: {
     fontFamily: Fonts.PoppinsSemiBold,
-    letterSpacing: 0.3,
+    fontSize: 14,
+    color: '#0F172A',
+  },
+  profileGateSub: {
+    marginTop: 2,
+    fontFamily: Fonts.PoppinsRegular,
+    fontSize: 12,
+    color: '#64748B',
+    lineHeight: 17,
+  },
+  chips: {
+    gap: 8,
+    paddingBottom: 12,
+  },
+  chip: {
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 20,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#DDE8E3',
+  },
+  chipActive: {
+    backgroundColor: Colors.primaryColor,
+    borderColor: Colors.primaryColor,
+  },
+  chipText: {
+    fontFamily: Fonts.PoppinsMedium,
+    fontSize: 12,
+    color: '#44524D',
+  },
+  chipTextActive: {
+    color: '#FFFFFF',
+  },
+  countText: {
+    fontFamily: Fonts.PoppinsMedium,
+    fontSize: 12,
+    color: '#6B7874',
+    marginBottom: 10,
+  },
+  separator: {
+    height: 14,
+  },
+  center: {
+    alignItems: 'center',
+    paddingVertical: 60,
+    gap: 6,
+  },
+  emptyTitle: {
+    fontFamily: Fonts.PoppinsSemiBold,
+    fontSize: 15,
+    color: '#1F2A27',
+    marginTop: 6,
+  },
+  emptySub: {
+    fontFamily: Fonts.PoppinsRegular,
+    fontSize: 12,
+    color: '#6B7874',
+  },
+  footerLoader: {
+    marginVertical: 18,
   },
 });

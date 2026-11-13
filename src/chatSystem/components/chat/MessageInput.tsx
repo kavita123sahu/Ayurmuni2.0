@@ -99,10 +99,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
       sendGuardRef.current = false;
       globalInputSendLock = false;
       setIsSending(false);
-      // Keep caret ready for the next message without layout jump
-      requestAnimationFrame(() => {
-        inputRef.current?.focus?.();
-      });
+      // Don't refocus after send — refocus + multiline resize jumps the composer.
     }
   };
 
@@ -149,7 +146,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
             editable={canInteract}
             multiline
             blurOnSubmit={false}
-            textAlignVertical="center"
+            textAlignVertical="top"
             style={[styles.input, !canInteract && styles.inputDisabled]}
             returnKeyType="default"
           />
@@ -206,10 +203,11 @@ const styles = StyleSheet.create({
   },
   inputContainer: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-end',
     backgroundColor: '#FFFFFF',
     borderRadius: 24,
     minHeight: 48,
+    paddingVertical: 4,
   },
   inputWrapper: {
     flex: 1,
@@ -220,7 +218,8 @@ const styles = StyleSheet.create({
     maxHeight: 100,
     minHeight: 40,
     paddingHorizontal: 14,
-    paddingVertical: Platform.OS === 'ios' ? 10 : 8,
+    paddingTop: Platform.OS === 'ios' ? 10 : 8,
+    paddingBottom: Platform.OS === 'ios' ? 10 : 8,
     backgroundColor: '#F3F4F6',
     borderRadius: 22,
     fontSize: 15,
@@ -228,6 +227,7 @@ const styles = StyleSheet.create({
     color: '#1F2937',
     borderWidth: 1,
     borderColor: '#E5E7EB',
+    includeFontPadding: false,
   },
   inputDisabled: {
     opacity: 0.5,

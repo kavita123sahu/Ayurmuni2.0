@@ -1,74 +1,35 @@
 import { PixelRatio } from 'react-native';
 import { SCREEN, SCREEN_PADDING_H } from './layout';
 
-/** Home suggested-doctor card — fixed px slots so every card stays the same height. */
-export const HOME_DOCTOR = {
-  gap: 10,
-  cardRadius: 18,
-  cardPadding: 10,
-  avatarSize: 64,
-  nameHeight: 32,
-  availabilityStripHeight: 16,
-  qualHeight: 14,
-  statsHeight: 20,
-  ctaHeight: 32,
-  ctaRadius: 8,
-} as const;
-
-// export const HOME_DOCTOR_CARD_HEIGHT =
-//   HOME_DOCTOR.cardPadding +
-//   (HOME_DOCTOR.avatarSize + 12) +
-//   6 +
-//   HOME_DOCTOR.nameHeight +
-//   HOME_DOCTOR.qualHeight +
-//   8 +
-//   HOME_DOCTOR.statsHeight +
-//   8 +
-//   HOME_DOCTOR.ctaHeight +
-//   HOME_DOCTOR.cardPadding;
-
-export const HOME_DOCTOR_CARD_HEIGHT =
-  HOME_DOCTOR.cardPadding * 2 +
-  (HOME_DOCTOR.avatarSize + 14) +
-  8 +
-  HOME_DOCTOR.availabilityStripHeight +
-  4 +
-  HOME_DOCTOR.nameHeight +
-  HOME_DOCTOR.qualHeight +
-  8 +
-  34 +
-  HOME_DOCTOR.cardPadding;
-
-export const getHomeDoctorCardWidth = () =>
-  PixelRatio.roundToNearestPixel(
-    (SCREEN.width - SCREEN_PADDING_H * 2 - HOME_DOCTOR.gap) / 2,
-  );
-
-/** List/consult grid card layout — same px on every device. */
+/** Doctor grid card (Home, Consult, All Doctors) — fixed px slots so every card is the same height. */
 export const DOCTOR_GRID = {
   gap: 10,
   cardRadius: 16,
   imageRadius: 16,
   cardPaddingH: 10,
   cardPaddingTop: 0,
-  cardPaddingBottom: 6, // 10 → 6
+  cardPaddingBottom: 8,
+  bodyPaddingTop: 8,
   photoHeight: 130,
-  nameHeight: 20,
-  availabilityStripHeight: 16,
+  /** Two lines of 16px — long names wrap, short names keep the same slot. */
+  nameLineHeight: 16,
+  nameHeight: 32,
   specialtyHeight: 16,
+  statsGap: 4,
   statsHeight: 18,
+  ctaGap: 6,
   ctaHeight: 34,
   ctaRadius: 10,
 } as const;
+
+/** Sum of the fixed body slots — keep in sync with DoctorListCard grid styles. */
 export const DOCTOR_GRID_BODY_HEIGHT =
-  6 +
-  DOCTOR_GRID.availabilityStripHeight +
-  2 +
+  DOCTOR_GRID.bodyPaddingTop +
   DOCTOR_GRID.nameHeight +
   DOCTOR_GRID.specialtyHeight +
-  4 +
+  DOCTOR_GRID.statsGap +
   DOCTOR_GRID.statsHeight +
-  4 +
+  DOCTOR_GRID.ctaGap +
   DOCTOR_GRID.ctaHeight +
   DOCTOR_GRID.cardPaddingBottom;
 

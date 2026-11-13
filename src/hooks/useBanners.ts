@@ -11,14 +11,12 @@ export const useBanners = (
   const [banners] = useState<any[]>([]);
   const [images, setImages] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const inFlightRef = useRef(false);
+  const fetchGenRef = useRef(0);
   const mountedRef = useRef(true);
   const hasLoadedRef = useRef(false);
 
   const refresh = useCallback(async () => {
-    if (inFlightRef.current) return;
-
-    inFlightRef.current = true;
+    const gen = ++fetchGenRef.current;
     if (!hasLoadedRef.current) {
       setLoading(true);
     }
@@ -26,23 +24,14 @@ export const useBanners = (
     try {
       const res = await getBanners(screen, serviceCategoryId);
 
-      if (!mountedRef.current) return;
+      if (!mountedRef.current || gen !== fetchGenRef.current) return;
 
       const next = Array.isArray(res?.data) ? res.data : [];
-
-      setImages(prev => {
-        if (
-          prev.length === next.length &&
-          prev.every((b, i) => b?.id === next[i]?.id)
-        ) {
-          return prev;
-        }
-        return next;
-      });
+      // Always apply latest network payload on refresh
+      setImages(next);
       hasLoadedRef.current = true;
     } finally {
-      inFlightRef.current = false;
-      if (mountedRef.current) {
+      if (mountedRef.current && gen === fetchGenRef.current) {
         setLoading(false);
       }
     }

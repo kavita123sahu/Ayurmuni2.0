@@ -11,6 +11,7 @@ import {
   StatusBar,
   Platform,
   LayoutAnimation,
+  RefreshControl,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
@@ -24,14 +25,16 @@ import {
   consultationHasPrescription,
   formatIssuedLabel,
   getAllergiesList,
-  getClinicalAdvisory,
   getConcernText,
   getDiagnosisText,
   getDoList,
   getDontList,
   getFamilyHistoryText,
+  getPersonalHistoryLines,
+  getGynaecologicalLines,
   getFollowUpInfo,
   getMedicineItems,
+  mergeMedicineItems,
   getMedicineScheduleChips,
   getPastIllnessText,
   getPaymentAmount,
@@ -45,16 +48,13 @@ import { formatPrescriptionId } from '../../utils/formatDisplayId';
 import { getDoctorLocationLine } from '../../utils/doctorSlipUtils';
 import { showSuccessToast } from '../../config/Key';
 import { RupeeAmount } from '../../utils/currencyUtils';
+import { getPaymentBreakdown } from '../../utils/paymentHistoryUtils';
+import PaymentBreakdownCard from '../../components/PaymentBreakdownCard';
+import { bumpGlobalRefresh } from '../../utils/forceRefresh';
+import { formatAppointmentTimeLabel } from '../../utils/appointmentUtils';
 import { downloadPdfToDevice } from '../../utils/fileDownloadUtils';
 import { createPrescriptionPdfBytes } from '../../utils/buildConsultationDocumentPdf';
 import { createPlainTextPdfBytes } from '../../utils/pdfPlainTextFallback';
-
-// if (
-//   Platform.OS === 'android' &&
-//   UIManager.setLayoutAnimationEnabledExperimental
-// ) {
-//   UIManager.setLayoutAnimationEnabledExperimental(true);
-// }
 
 const C = {
   primary: Colors.primaryColor,
@@ -172,14 +172,11 @@ const ExpandableList = ({
           />
         </View>
         <Text style={[styles.adviceTitle, { color: accent }]}>{title}</Text>
-        <Text style={styles.adviceCount}>{items.length}</Text>
       </View>
 
       {shown.map((item, index) => (
         <View key={`${title}-${index}`} style={styles.adviceItem}>
-          <Text style={[styles.adviceIndex, { color: accent }]}>
-            {index + 1}.
-          </Text>
+          <View style={[styles.adviceBullet, { backgroundColor: accent }]} />
           <Text style={styles.adviceText}>{item}</Text>
         </View>
       ))}
@@ -215,20 +212,21 @@ const PrescriptionDetail = (props: any) => {
 
   const lookupId = String(
     params.appointment_id ||
-      params.consultation_id ||
-      params.PrisData?.appointment_id ||
-      params.PrisData?.consultation_id ||
-      '',
+    params.consultation_id ||
+    params.PrisData?.appointment_id ||
+    params.PrisData?.consultation_id ||
+    '',
   ).trim();
 
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [downloadingPdf, setDownloadingPdf] = useState(false);
   const [payload, setPayload] = useState<any>(
     params.PrisData
       ? {
-          ...params.PrisData,
-          doctor: params.doctorData || params.PrisData?.doctor,
-        }
+        ...params.PrisData,
+        doctor: params.doctorData || params.PrisData?.doctor,
+      }
       : null,
   );
   const hasSeedData = useMemo(
@@ -237,7 +235,7 @@ const PrescriptionDetail = (props: any) => {
     [],
   );
 
-  const fetchPrescription = useCallback(async () => {
+  const fetchPrescription = useCallback(async (opts?: { silent?: boolean }) => {
     if (!lookupId) {
       if (!params.PrisData) {
         showSuccessToast('Appointment id missing', 'error');
@@ -247,7 +245,7 @@ const PrescriptionDetail = (props: any) => {
     }
 
     try {
-      if (!hasSeedData) setLoading(true);
+      if (!hasSeedData && !opts?.silent) setLoading(true);
       const res = await _CONSULT_SERVICE.getAppointmentDetail(lookupId);
       if (!res?.success) {
         if (!hasSeedData) {
@@ -265,6 +263,16 @@ const PrescriptionDetail = (props: any) => {
       setLoading(false);
     }
   }, [lookupId, hasSeedData]);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      bumpGlobalRefresh();
+      await fetchPrescription({ silent: true });
+    } finally {
+      setRefreshing(false);
+    }
+  }, [fetchPrescription]);
 
   useEffect(() => {
     fetchPrescription();
@@ -289,30 +297,34 @@ const PrescriptionDetail = (props: any) => {
   const doItems = getDoList(prescription);
   const dontItems = getDontList(prescription);
   const suggestions = getSuggestionList(prescription);
-  const clinicalNotes = getClinicalAdvisory(prescription);
   const doctorLocation = getDoctorLocationLine(doctor);
   const doctorId = doctor?.doctor_id || doctor?.id || null;
   const hasContent = consultationHasPrescription(payload);
   const paymentAmount = getPaymentAmount(payload);
+  const paymentBreakdown = useMemo(
+    () => getPaymentBreakdown(payload, payload?.payment, appointment),
+    [payload, appointment],
+  );
   const concernText = getConcernText(payload);
   const diagnosisText = getDiagnosisText(prescription);
   const prescriptionCode = formatPrescriptionId(
     prescription?.prescription_code ||
-      prescription?.id ||
-      normalized.prescriptionId,
+    prescription?.id ||
+    normalized.prescriptionId,
   );
-  const symptomText = getSymptomDescription(prescription);
   const allergies = getAllergiesList(prescription);
   const pastIllnessText = getPastIllnessText(prescription);
   const familyHistoryText = getFamilyHistoryText(prescription);
+  const personalHistory = getPersonalHistoryLines(prescription);
+  const gynaecological = getGynaecologicalLines(prescription);
   const followUp = getFollowUpInfo(prescription, appointment);
 
   const paymentStatus = String(
     payload?.payment?.status ||
-      payload?.payment?.payment_status ||
-      appointment?.payment?.status ||
-      appointment?.payment?.payment_status ||
-      '',
+    payload?.payment?.payment_status ||
+    appointment?.payment?.status ||
+    appointment?.payment?.payment_status ||
+    '',
   ).trim();
 
   const doctorPhone =
@@ -328,10 +340,10 @@ const PrescriptionDetail = (props: any) => {
   const specialization = Array.isArray(doctor?.doctor_specialization)
     ? doctor.doctor_specialization.filter(Boolean).join(', ')
     : doctor?.doctor_specialization ||
-      doctor?.specialization ||
-      doctor?.speciality ||
-      diseaseTags.slice(0, 2).join(' · ') ||
-      '';
+    doctor?.specialization ||
+    doctor?.speciality ||
+    diseaseTags.slice(0, 2).join(' · ') ||
+    '';
 
   const patientLine = [
     patient?.age != null ? `${patient.age} yrs` : '',
@@ -345,11 +357,12 @@ const PrescriptionDetail = (props: any) => {
     appointment?.consultation_type
       ? String(appointment.consultation_type).replace(/_/g, ' ')
       : '',
-    appointment?.start_time && appointment?.end_time
-      ? `${String(appointment.start_time).slice(0, 5)}–${String(
-          appointment.end_time,
-        ).slice(0, 5)}`
-      : '',
+    (() => {
+      const start = formatAppointmentTimeLabel(appointment?.start_time);
+      const end = formatAppointmentTimeLabel(appointment?.end_time);
+      if (start && end) return `${start}–${end}`;
+      return start || end || '';
+    })(),
   ]
     .filter(Boolean)
     .join(' · ');
@@ -436,15 +449,24 @@ const PrescriptionDetail = (props: any) => {
 
       const code = formatPrescriptionId(
         response.prescriptionData?.prescription_code ||
-          prescription?.prescription_code ||
-          prescriptionId,
+        prescription?.prescription_code ||
+        prescriptionId,
       ).replace(/[^a-zA-Z0-9._-]/g, '_');
 
       if (response.prescriptionData) {
         const fileName = `Ayurmuni_Prescription_${code}.pdf`;
+        const downloadRx =
+          response.prescriptionData.prescription ?? response.prescriptionData;
+        const screenRx = prescription ?? {};
+        console.log('PRESCRIPTION_PDF_DOWNLOAD_ITEMS =>', JSON.stringify(getMedicineItems(downloadRx)));
+        console.log('PRESCRIPTION_PDF_SCREEN_ITEMS =>', JSON.stringify(getMedicineItems(screenRx)));
         const mergedPayload = {
           ...(payload ?? {}),
           ...response.prescriptionData,
+          payment:
+            response.prescriptionData.payment ??
+            payload?.payment ??
+            payload?.appointment?.payment,
           doctor:
             response.prescriptionData.doctor ??
             payload?.doctor ??
@@ -455,9 +477,45 @@ const PrescriptionDetail = (props: any) => {
             payload?.appointment?.patient,
           appointment:
             response.prescriptionData.appointment ?? payload?.appointment,
-          prescription:
-            response.prescriptionData.prescription ??
-            response.prescriptionData,
+          prescription: {
+            ...screenRx,
+            ...downloadRx,
+            // Keep on-screen clinical values when download payload omits them
+            symptom_description:
+              downloadRx?.symptom_description ||
+              downloadRx?.chief_complaint ||
+              screenRx?.symptom_description ||
+              screenRx?.chief_complaint,
+            chief_complaint:
+              downloadRx?.chief_complaint ||
+              downloadRx?.symptom_description ||
+              screenRx?.chief_complaint ||
+              screenRx?.symptom_description,
+            history_of_past_illness:
+              downloadRx?.history_of_past_illness ||
+              downloadRx?.past_illness ||
+              screenRx?.history_of_past_illness ||
+              screenRx?.past_illness,
+            past_illness:
+              downloadRx?.past_illness ||
+              downloadRx?.history_of_past_illness ||
+              screenRx?.past_illness ||
+              screenRx?.history_of_past_illness,
+            family_history:
+              downloadRx?.family_history || screenRx?.family_history,
+            personal_history:
+              downloadRx?.personal_history || screenRx?.personal_history,
+            gynaecological:
+              downloadRx?.gynaecological ||
+              downloadRx?.gynaecological_history ||
+              screenRx?.gynaecological ||
+              screenRx?.gynaecological_history,
+            allergies: downloadRx?.allergies || screenRx?.allergies,
+            items: mergeMedicineItems(
+              getMedicineItems(downloadRx),
+              getMedicineItems(screenRx),
+            ),
+          },
           diets:
             response.prescriptionData.diets ??
             payload?.diets ??
@@ -510,11 +568,7 @@ const PrescriptionDetail = (props: any) => {
 
   const stickyPad = Math.max(insets.bottom, 12);
 
-  const presentingComplaint =
-    concernText &&
-    concernText.toLowerCase() !== symptomText.toLowerCase()
-      ? concernText
-      : '';
+  const presentingComplaint = getSymptomDescription(prescription);
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
@@ -572,6 +626,14 @@ const PrescriptionDetail = (props: any) => {
               paddingHorizontal: 14,
               paddingTop: 10,
             }}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                tintColor={C.primary}
+                colors={[C.primary]}
+              />
+            }
           >
             {/* ===== RX PAPER ===== */}
             <View style={styles.paper}>
@@ -649,7 +711,7 @@ const PrescriptionDetail = (props: any) => {
                   <View style={styles.statusPill}>
                     <Text style={styles.statusText}>{statusLabel}</Text>
                   </View>
-                  {paymentAmount != null ? (
+                  {!paymentBreakdown && paymentAmount != null ? (
                     <RupeeAmount
                       value={paymentAmount}
                       style={styles.feeText}
@@ -657,70 +719,78 @@ const PrescriptionDetail = (props: any) => {
                       iconSize={12}
                     />
                   ) : null}
-                  {!!paymentStatus && (
+                  {!paymentBreakdown && !!paymentStatus && (
                     <Text style={styles.payStatus}>{paymentStatus}</Text>
                   )}
                 </View>
               </View>
             </View>
 
+            {paymentBreakdown ? (
+              <View style={styles.card}>
+                <SectionLabel title="Payment breakdown" icon="receipt" />
+                <PaymentBreakdownCard breakdown={paymentBreakdown} />
+              </View>
+            ) : null}
+
             {/* Clinical findings */}
             {(!!presentingComplaint ||
-              !!symptomText ||
-              !!clinicalNotes ||
               allergies.length > 0 ||
               !!pastIllnessText ||
-              !!familyHistoryText) && (
-              <View style={styles.card}>
-                <SectionLabel
-                  title="Clinical findings"
-                  icon="stethoscope"
-                />
-                {!!presentingComplaint && (
-                  <FindingRow
-                    icon="clipboard-list"
-                    label="Chief complaint"
-                    value={presentingComplaint}
+              !!familyHistoryText ||
+              personalHistory.length > 0 ||
+              gynaecological.length > 0) && (
+                <View style={styles.card}>
+                  <SectionLabel
+                    title="Clinical findings"
+                    icon="stethoscope"
                   />
-                )}
-                {!!symptomText && (
-                  <FindingRow
-                    icon="notes"
-                    label="Symptoms"
-                    value={symptomText}
-                  />
-                )}
-                {!!clinicalNotes && (
-                  <FindingRow
-                    icon="file-medical"
-                    label="Examination"
-                    value={clinicalNotes}
-                  />
-                )}
-                {allergies.length > 0 && (
-                  <FindingRow
-                    icon="alert-circle"
-                    label="Allergies"
-                    value={allergies.join(', ')}
-                    alert
-                  />
-                )}
-                {!!pastIllnessText && (
-                  <FindingRow
-                    icon="history"
-                    label="Past illness"
-                    value={pastIllnessText}
-                  />
-                )}
-                {!!familyHistoryText && (
-                  <FindingRow
-                    icon="users"
-                    label="Family history"
-                    value={familyHistoryText}
-                  />
-                )}
-              </View>
-            )}
+                  {!!presentingComplaint && (
+                    <FindingRow
+                      icon="clipboard-list"
+                      label="Chief complaint"
+                      value={presentingComplaint}
+                    />
+                  )}
+
+                  {allergies.length > 0 && (
+                    <FindingRow
+                      icon="alert-circle"
+                      label="Allergies"
+                      value={allergies.join(', ')}
+                      alert
+                    />
+                  )}
+                  {!!pastIllnessText && (
+                    <FindingRow
+                      icon="history"
+                      label="Past illness"
+                      value={pastIllnessText}
+                    />
+                  )}
+                  {!!familyHistoryText && (
+                    <FindingRow
+                      icon="users"
+                      label="Family history"
+                      value={familyHistoryText}
+                    />
+                  )}
+                  {personalHistory.length > 0 && (
+                    <FindingRow
+                      icon="user"
+                      label="Personal history"
+                      value={personalHistory.join('\n')}
+                    />
+                  )}
+                  {gynaecological.length > 0 && (
+                    <FindingRow
+                      icon="heart"
+                      label="Gynaecological history"
+                      value={gynaecological.join('\n')}
+                    />
+                  )}
+                </View>
+              )}
 
             {/* Diagnosis */}
             {!!diagnosisText && (
@@ -740,7 +810,6 @@ const PrescriptionDetail = (props: any) => {
               <SectionLabel
                 title="Prescribed medicines"
                 icon="pill"
-                badge={medicines.length ? String(medicines.length) : undefined}
               />
               {medicines.length === 0 ? (
                 <Text style={styles.emptySection}>No medicines prescribed</Text>
@@ -755,7 +824,7 @@ const PrescriptionDetail = (props: any) => {
                   const showSub =
                     !!subtitle &&
                     String(subtitle).toLowerCase() !==
-                      String(medicine?.medicine_name || '').toLowerCase();
+                    String(medicine?.medicine_name || '').toLowerCase();
 
                   return (
                     <View
@@ -765,9 +834,6 @@ const PrescriptionDetail = (props: any) => {
                         index === medicines.length - 1 && styles.medItemLast,
                       ]}
                     >
-                      <View style={styles.medIndex}>
-                        <Text style={styles.medIndexText}>{index + 1}</Text>
-                      </View>
                       <View style={styles.medBody}>
                         <Text style={styles.medName}>
                           {medicine?.medicine_name ||
@@ -891,26 +957,26 @@ const PrescriptionDetail = (props: any) => {
             )}
 
             {/* Follow-up */}
-            {followUp.hasContent && (
-              <View style={styles.followCard}>
-                <View style={styles.followIcon}>
-                  <TablerIcon name="calendar" size={18} color={C.primary} />
-                </View>
-                <View style={{ flex: 1, minWidth: 0 }}>
-                  <Text style={styles.followEyebrow}>
-                    {followUp.schedule
-                      ? 'Follow-up scheduled'
-                      : 'Follow-up advised'}
-                  </Text>
-                  <Text style={styles.followDate}>
-                    {followUp.dateLabel || 'Date to be confirmed'}
-                  </Text>
-                  {!!followUp.reason && (
-                    <Text style={styles.followReason}>{followUp.reason}</Text>
-                  )}
-                </View>
+            <View style={styles.followCard}>
+              <View style={styles.followIcon}>
+                <TablerIcon name="calendar" size={18} color={C.primary} />
               </View>
-            )}
+              <View style={{ flex: 1, minWidth: 0 }}>
+                <Text style={styles.followEyebrow}>
+                  {followUp.dateLabel
+                    ? followUp.schedule
+                      ? 'Follow-up scheduled'
+                      : 'Follow-up advised'
+                    : 'Follow-up'}
+                </Text>
+                <Text style={styles.followDate}>
+                  {followUp.dateLabel || 'No follow-up given'}
+                </Text>
+                {!!followUp.reason && (
+                  <Text style={styles.followReason}>{followUp.reason}</Text>
+                )}
+              </View>
+            </View>
 
             {/* Help / contact */}
             <View style={styles.helpCard}>
@@ -1519,11 +1585,11 @@ const styles = StyleSheet.create({
     marginBottom: 6,
     gap: 6,
   },
-  adviceIndex: {
-    width: 18,
-    fontSize: 12,
-    fontFamily: Fonts.PoppinsSemiBold,
-    marginTop: 1,
+  adviceBullet: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    marginTop: 7,
   },
   adviceText: {
     flex: 1,

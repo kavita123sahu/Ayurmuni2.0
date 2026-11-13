@@ -20,12 +20,12 @@ export const Images = {
     login13: require('../assets/images/login/13.png'),
     login14: require('../assets/images/login/14.jpg'),
 
-
     ayurvedic: require('../assets/images/login/ayurvedic.jpeg'),
     dietlifestyle: require('../assets/images/login/dietlifestyle.jpeg'),
     delivery: require('../assets/images/login/delivery.png'),
     lab: require('../assets/images/login/lab.png'),
-    online: require('../assets/images/login/10.png'),
+    // journeyConsult: require('../assets/images/login/10.png'),
+    
     journeyConsult: require('../assets/images/login/10.png'),
     journeyMedicine: require('../assets/images/login/9.png'),
     journeyDelivery: require('../assets/images/login/delivery.png'),
@@ -35,14 +35,12 @@ export const Images = {
 
     HomeBanner: require('../assets/images/banner.png'),
     BackgroundImage: require('../assets/images/BGImage.png'),
-    doctorImage: require('../assets/images/doctorImage.png'),
     FAQImage: require('../assets/images/FAQImage.png'),
     networkissue: require('../assets/images/networklogo.png'),
     yesHuman: require('../assets/images/Yes.png'),
     noHuman: require('../assets/images/No.png'),
     doc1: require('../assets/images/doc1.png'),
 
-    cardiology: require('../assets/images/cardiology.png'),
     leaf1: require('../assets/images/leaf1.png'),
     leaf2: require('../assets/images/leaf2.png'),
     Panchakarma: require('../assets/images/panchkarma.png'),

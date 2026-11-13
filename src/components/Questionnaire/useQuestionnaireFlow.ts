@@ -26,6 +26,9 @@ import {
 } from './utils';
 import { promoteToFullUser, resolveAccessLikeProfile } from '../../services/guestAuth';
 import { XP_PER_LEVEL, STREAK_BONUS } from './PrakritiQuestTheme';
+import { bumpGlobalRefresh } from '../../utils/forceRefresh';
+import { store } from '../../store/store';
+import { fetchCustomerData } from '../../store/slices/homeSlice';
 
 export const useQuestionnaireFlow = (
   navigation: any,
@@ -111,14 +114,16 @@ export const useQuestionnaireFlow = (
           const response: any = await submitKnowPrakriti(true);
           const options = response?.data?.prakriti_result_options ?? [];
 
-          if (!options.length) {
-            showSuccessToast('No prakriti options found', 'error');
+          if (options.length) {
+            setSteps([KNOW_PRAKRITI_STEP, buildPrakritiTypeStep(options)]);
+            setStep(1);
             return;
           }
-
-          setSteps([KNOW_PRAKRITI_STEP, buildPrakritiTypeStep(options)]);
-          setStep(1);
-          return;
+          // No type options — continue into full questionnaire instead of staying stuck
+          showSuccessToast(
+            'Continuing with Prakriti questions',
+            'success',
+          );
         }
 
         const questions = cachedPrakritiQuestions.current;
@@ -228,7 +233,21 @@ export const useQuestionnaireFlow = (
         await resolveAccessLikeProfile();
       }
 
-      navigation.replace(setup.finishRoute, setup.finishParams);
+      // Force home / prakriti / profile screens to drop stale progress + analysis
+      bumpGlobalRefresh();
+      try {
+        await store.dispatch(fetchCustomerData(true));
+        // Refresh local user cache so Profile header updates immediately
+        await resolveAccessLikeProfile();
+      } catch {
+        // non-blocking
+      }
+
+      navigation.replace(setup.finishRoute, {
+        ...(setup.finishParams || {}),
+        fromAssessment: true,
+        refreshedAt: Date.now(),
+      });
     } catch {
       showSuccessToast('Something went wrong', 'error');
     } finally {

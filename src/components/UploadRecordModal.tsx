@@ -81,7 +81,10 @@ const UploadRecordModal: React.FC<Props> = ({
                         </View>
                     )}
 
-                    <Text style={styles.label}>Record Name *</Text>
+                    <Text style={styles.label}>
+                        Record Name
+                        <Text style={styles.requiredMark}> *</Text>
+                    </Text>
                     <TextInput
                         value={description}
                         onChangeText={setDescription}
@@ -91,7 +94,10 @@ const UploadRecordModal: React.FC<Props> = ({
                         editable={!uploading}
                     />
 
-                    <Text style={styles.label}>Record Type *</Text>
+                    <Text style={styles.label}>
+                        Record Type
+                        <Text style={styles.requiredMark}> *</Text>
+                    </Text>
                     <View style={styles.typeRow}>
                         {RECORD_TYPES.map(item => {
                             const isSelected = recordType === item.value;
@@ -191,6 +197,10 @@ const styles = StyleSheet.create({
         fontFamily: Fonts.PoppinsMedium,
         color: '#334155',
         marginBottom: 8,
+    },
+    requiredMark: {
+        color: '#EF4444',
+        fontFamily: Fonts.PoppinsSemiBold,
     },
     input: {
         height: 50,

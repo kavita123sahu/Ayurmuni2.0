@@ -72,32 +72,59 @@ const LocationPickerScreen = () => {
   const [searching, setSearching] = useState(false);
   const [locationError, setLocationError] = useState('');
 
-  // const [searching, setSearching] = useState(false);
-  // const [locationError, setLocationError] = useState('');
   const [pincodeInput, setPincodeInput] = useState('');
   const [pincodeLoading, setPincodeLoading] = useState(false);
   const lastPincodeLookupRef = useRef('');
 
   const debouncedQuery = useDebounce(searchQuery, 400);
   const debouncedPincode = useDebounce(pincodeInput, 500);
+  /** Once the user pans the map, ignore late GPS fixes that would yank the pin back. */
+  const userPinnedRef = useRef(false);
 
   const applyParsedAddress = useCallback((parsed: ParsedAddress) => {
     setAddress(parsed);
     setMarker({ latitude: parsed.latitude, longitude: parsed.longitude });
     if (parsed.zipcode) {
-      setPincodeInput(parsed.zipcode.replace(/[^0-9]/g, '').slice(0, 6));
+      const zip = parsed.zipcode.replace(/[^0-9]/g, '').slice(0, 6);
+      setPincodeInput(zip);
+      // Already have coords for this zip — skip pincode→centroid snap
+      if (zip.length === 6) {
+        lastPincodeLookupRef.current = zip;
+      }
     }
   }, []);
 
+  /**
+   * User dragged / tapped the map — keep the pin exactly where they put it.
+   * Only refresh the address label from reverse-geocode (do not move the pin).
+   */
   const updateLocation = useCallback(async (coords: Coordinates) => {
+    userPinnedRef.current = true;
+    setMarker(coords);
     setGeocoding(true);
     setLocationError('');
     try {
       const parsed = await reverseGeocode(coords);
-      const enriched = await enrichAddressWithPincode(parsed);
-      applyParsedAddress(enriched);
+      const enriched = await enrichAddressWithPincode({
+        ...parsed,
+        latitude: coords.latitude,
+        longitude: coords.longitude,
+      });
+      setAddress({
+        ...enriched,
+        latitude: coords.latitude,
+        longitude: coords.longitude,
+      });
+      if (enriched.zipcode) {
+        const zip = enriched.zipcode.replace(/[^0-9]/g, '').slice(0, 6);
+        setPincodeInput(zip);
+        // Critical: reverse-geocode zip must NOT trigger geocodePincode
+        // which would yank the pin to the postal-code centroid.
+        if (zip.length === 6) {
+          lastPincodeLookupRef.current = zip;
+        }
+      }
     } catch (error: any) {
-      setMarker(coords);
       setLocationError(
         error?.message ||
         'Could not fetch address. Try search or move the map.',
@@ -105,11 +132,12 @@ const LocationPickerScreen = () => {
     } finally {
       setGeocoding(false);
     }
-  }, [applyParsedAddress]);
+  }, []);
 
   const loadCurrentLocation = useCallback(async () => {
     setLoading(true);
     setLocationError('');
+    userPinnedRef.current = false;
     try {
       const granted = await requestLocationPermission();
       if (!granted) {
@@ -118,8 +146,13 @@ const LocationPickerScreen = () => {
         return;
       }
       const coords = await getCurrentPosition();
-      await updateLocation(coords);
+      // User already moved the pin while GPS was resolving — keep their choice
+      if (userPinnedRef.current) return;
+      applyParsedAddress(
+        await enrichAddressWithPincode(await reverseGeocode(coords)),
+      );
     } catch (error: any) {
+      if (userPinnedRef.current) return;
       const refreshed = await refreshCurrentLocation();
       if (refreshed) {
         const enriched = await enrichAddressWithPincode(refreshed);
@@ -137,22 +170,23 @@ const LocationPickerScreen = () => {
     } finally {
       setLoading(false);
     }
-  }, [updateLocation, refreshCurrentLocation, applyParsedAddress]);
+  }, [refreshCurrentLocation, applyParsedAddress]);
 
   useEffect(() => {
-    if (initialCoords) {
+    // Always prefer a fresh GPS fix when opening the picker so the map
+    // does not stick on a previously saved delivery pin.
+    if (initialCoords && !useGpsOnly) {
       setLoading(false);
       if (currentAddress?.zipcode) {
         setPincodeInput(currentAddress.zipcode.replace(/[^0-9]/g, '').slice(0, 6));
       } else if (deliveryLocation?.zipcode) {
-        setPincodeInput(deliveryLocation.zipcode.replace(/[^0-9]/g, '').slice(0, 6));
+        setPincodeInput(
+          deliveryLocation.zipcode.replace(/[^0-9]/g, '').slice(0, 6),
+        );
       }
-      if (useGpsOnly) {
-        loadCurrentLocation();
-      }
-      return;
     }
-    loadCurrentLocation();
+    void loadCurrentLocation();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -191,6 +225,21 @@ const LocationPickerScreen = () => {
         }
 
         lastPincodeLookupRef.current = cleaned;
+        // Manual pincode entry only — never override a pin the user just dropped
+        if (userPinnedRef.current) {
+          setAddress(prev =>
+            prev
+              ? {
+                  ...prev,
+                  city: parsed.city || prev.city,
+                  state: parsed.state || prev.state,
+                  zipcode: cleaned,
+                  country: parsed.country || prev.country,
+                }
+              : parsed,
+          );
+          return;
+        }
         setAddress(prev => ({
           ...parsed,
           address_line_1: prev?.address_line_1 || parsed.address_line_1,
@@ -215,6 +264,7 @@ const LocationPickerScreen = () => {
     setSearchQuery(item.main_text);
     setSuggestions([]);
     setGeocoding(true);
+    userPinnedRef.current = false;
     try {
       const parsed = await getPlaceDetails(item.place_id);
       const enriched = await enrichAddressWithPincode(parsed);
@@ -232,6 +282,7 @@ const LocationPickerScreen = () => {
       return;
     }
 
+    // Persist the pin the user actually placed (marker), not a geocode centroid
     const selectedLocation = {
       address_line_1: address.address_line_1,
       address_line_2: address.address_line_2,
@@ -239,12 +290,16 @@ const LocationPickerScreen = () => {
       state: address.state,
       zipcode: address.zipcode,
       country: address.country,
-      latitude: address.latitude,
-      longitude: address.longitude,
+      latitude: marker.latitude,
+      longitude: marker.longitude,
       formatted_address: address.formatted_address,
     };
 
-    await setDeliveryLocation(address);
+    await setDeliveryLocation({
+      ...address,
+      latitude: marker.latitude,
+      longitude: marker.longitude,
+    });
 
     if (params.returnScreen) {
       navigation.dispatch(
@@ -273,17 +328,6 @@ const LocationPickerScreen = () => {
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={styles.scroll}
       >
-        {/* <View style={styles.searchWrap}>
-          <TablerIcon name="search" size={18} color="#64748B" />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Search area, street, landmark..."
-            placeholderTextColor="#94A3B8"
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-          />
-          {searching && <ActivityIndicator size="small" color={Colors.primaryColor} />}
-        </View> */}
 
         <View style={styles.pincodeWrap}>
           <TablerIcon name="map-pin" size={18} color="#64748B" />
@@ -342,9 +386,16 @@ const LocationPickerScreen = () => {
           <Text style={styles.recenterText}>Use my current location</Text>
         </TouchableOpacity>
 
-        <Text style={styles.hint}>Move the map — pin stays at center</Text>
+        {!!locationError ? (
+          <View style={styles.errorBanner}>
+            <TablerIcon name="alert-circle" size={16} color="#B45309" />
+            <Text style={styles.errorText}>{locationError}</Text>
+          </View>
+        ) : null}
 
-        {/* {!!locationError && <Text style={styles.errorText}>{locationError}</Text>} */}
+        <Text style={styles.hint}>
+          For exact building: zoom in and drop the pin on it (or search the name)
+        </Text>
 
         <View style={styles.addressCard}>
           {geocoding ? (
@@ -353,12 +404,21 @@ const LocationPickerScreen = () => {
             <>
               <TablerIcon name="map-pin" size={20} color={Colors.primaryColor} />
               <View style={{ flex: 1 }}>
-                <Text style={styles.addressText} numberOfLines={4}>
-                  {address?.formatted_address || 'Move map, search, or enter pincode'}
+                <Text style={styles.addressText} numberOfLines={2}>
+                  {address?.address_line_1 ||
+                    address?.formatted_address ||
+                    'Move map, search, or enter pincode'}
                 </Text>
-                {!!address?.city && (
-                  <Text style={styles.addressMeta}>
-                    {[address.city, address.state, address.zipcode].filter(Boolean).join(', ')}
+                {!!(address?.address_line_2 || address?.city) && (
+                  <Text style={styles.addressMeta} numberOfLines={3}>
+                    {[
+                      address?.address_line_2,
+                      address?.city,
+                      address?.state,
+                      address?.zipcode,
+                    ]
+                      .filter(Boolean)
+                      .join(', ')}
                   </Text>
                 )}
               </View>
@@ -476,12 +536,24 @@ const styles = StyleSheet.create({
     color: '#94A3B8',
     marginTop: 6,
   },
+  errorBanner: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    marginTop: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 12,
+    backgroundColor: '#FFFBEB',
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+  },
   errorText: {
+    flex: 1,
     fontSize: 12,
+    lineHeight: 17,
     fontFamily: Fonts.PoppinsMedium,
-    color: '#DC2626',
-    textAlign: 'center',
-    marginTop: 6,
+    color: '#B45309',
   },
   addressCard: {
     flexDirection: 'row',

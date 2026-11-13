@@ -24,6 +24,7 @@ import * as _PROFILE_SERVICES from '../services/ProfileServices';
 import { showSuccessToast } from '../config/Key';
 import { fetchWithCache, getCached, invalidateCache } from '../services/apiCache';
 import { Utils } from '../common/Utils';
+import { formatSecondWordUpper, toTitleCase } from '../utils/textFormat';
 
 export type HealthDiseaseOption = {
   id: string;
@@ -126,7 +127,7 @@ const DiseaseSelectionModal = ({
             .filter(item => item.id && item.name)
             .map(item => ({
               id: String(item.id),
-              name: String(item.name),
+              name: toTitleCase(String(item.name)),
               image_url: item.image_url || undefined,
             }));
         },
@@ -289,7 +290,7 @@ const DiseaseSelectionModal = ({
             style={[styles.itemText, isSelected && styles.itemTextSelected]}
             numberOfLines={2}
           >
-            {item.name}
+            {toTitleCase(item.name)}
           </Text>
           <View style={[styles.checkbox, isSelected && styles.checkboxOn]}>
             {isSelected ? (
@@ -323,7 +324,9 @@ const DiseaseSelectionModal = ({
 
           <View style={styles.header}>
             <View style={styles.headerCopy}>
-              <Text style={styles.kicker}>Health profile</Text>
+              <Text style={styles.kicker}>
+                {formatSecondWordUpper('Health profile')}
+              </Text>
               <Text style={styles.title}>{title}</Text>
               <Text style={styles.subtitle}>{subtitle}</Text>
             </View>

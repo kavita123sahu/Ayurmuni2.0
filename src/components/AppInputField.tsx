@@ -30,6 +30,9 @@ const AppInputField = ({
   keyboardType,
   maxLength,
   autoCapitalize,
+  autoComplete,
+  textContentType,
+  importantForAutofill,
 }: any) => {
   const [isDatePickerVisible, setDatePickerVisibility] = useState(false);
   const isDropdownField = options.length > 0;
@@ -112,6 +115,9 @@ const AppInputField = ({
             keyboardType={keyboardType}
             maxLength={maxLength}
             autoCapitalize={autoCapitalize}
+            autoComplete={autoComplete}
+            textContentType={textContentType}
+            importantForAutofill={importantForAutofill}
             style={[styles.input, disabled && styles.inputTextDisabled]}
             placeholderTextColor="#94A3B8"
           />

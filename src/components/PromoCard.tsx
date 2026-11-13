@@ -80,7 +80,6 @@ const PromoCard: React.FC<Props> = ({
   const subText = String(subscription || '').trim();
   const tagText = String(tag || '').trim();
   const symptomList = useMemo(() => normalizeSymptoms(symptoms), [symptoms]);
-console.log("symptomssymptomssymptomssymptoms",symptoms)
   const imageSource: ImageSourcePropType | null = useMemo(() => {
     if (!image) return null;
     if (typeof image === 'string') {

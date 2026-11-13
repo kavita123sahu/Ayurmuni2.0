@@ -150,6 +150,7 @@ export const DIET_UI = {
   hydrationIcon: 40,
   hydrationAction: 38,
   mealDetailHeroHeight: 200,
-  detailHeroHeight: 200,
-  detailCardOverlap: 20,
+  detailHeroHeight: 220,
+  /** Keep small so hero image stays fully visible above the card */
+  detailCardOverlap: 0,
 } as const;

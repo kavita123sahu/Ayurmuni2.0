@@ -20,6 +20,7 @@ import { useHomeData } from '../hooks/UseHomeData';
 import { requireAuth, isGuestUser } from '../services/guestAuth';
 import { useLocation } from '../context/LocationContext';
 import { savedAddressToParsed } from '../services/locationService';
+import { showSuccessToast } from '../config/Key';
 import { useAppDispatch } from '../store/hooks';
 import { fetchCart } from '../store/slices/cartSlice';
 import { useUnreadNotificationCount } from '../hooks/useNotification';
@@ -49,17 +50,18 @@ const RING = 42;
 const STROKE = 2.5;
 
 const resolvePrakritiName = (customer: any, fallback?: string) => {
-  const raw =
-    customer?.prakriti_type ||
-    customer?.prakriti_result ||
-    customer?.prakriti_name ||
-    customer?.prakriti ||
-    customer?.result ||
-    customer?.dosha_type ||
-    customer?.dominant_prakriti ||
-    fallback ||
-    '';
-  return String(raw).trim();
+    // Prefer `result` (prakriti/info API) and dominant_* over older cached type fields
+    const raw =
+        customer?.result ||
+        customer?.dominant_prakriti ||
+        customer?.prakriti_result ||
+        customer?.prakriti_name ||
+        customer?.prakriti_type ||
+        customer?.prakriti ||
+        customer?.dosha_type ||
+        fallback ||
+        '';
+    return String(raw).trim();
 };
 
 const normalizePrakritiKey = (name: string) =>
@@ -175,25 +177,6 @@ const HomeHeader = ({
         };
     }, [customerData]);
 
-    // Load persisted prakriti result name once to reduce flicker when customerData reloads
-    useEffect(() => {
-        let cancelled = false;
-        const loadStored = async () => {
-            try {
-                const stored = await Utils.getData(PRAKRITI_RESULT_KEY);
-                if (!cancelled && stored) {
-                    setPrakritiResultName(String(stored));
-                }
-            } catch {
-                // ignore
-            }
-        };
-        loadStored();
-        return () => {
-            cancelled = true;
-        };
-    }, []);
-
     // Hold last known progress so soft profile reloads don't flash "Deliver to"
     useEffect(() => {
         const next = Math.max(0, Math.min(100, Math.round(Number(progress1) || 0)));
@@ -204,6 +187,7 @@ const HomeHeader = ({
 
     const {
         currentAddress,
+        deliveryLocation,
         loadingLocation,
         locationEnabled,
         setDeliveryLocation,
@@ -216,19 +200,40 @@ const HomeHeader = ({
     [savedAddresses],
   );
 
-    // Saved profile address first; live GPS only when permission is enabled
+    // Live / user-chosen delivery first, then saved default, then raw GPS
     const activeLocation = useMemo(() => {
-        if (defaultAddress) {
-            return savedAddressToParsed(defaultAddress);
+        if (deliveryLocation) {
+            return deliveryLocation;
         }
         if (locationEnabled && currentAddress) {
             return currentAddress;
         }
+        if (defaultAddress) {
+            return savedAddressToParsed(defaultAddress);
+        }
         return null;
-    }, [defaultAddress, currentAddress, locationEnabled]);
+    }, [deliveryLocation, currentAddress, defaultAddress, locationEnabled]);
 
     const shortAddress = useMemo(() => {
-        if (defaultAddress) {
+        if (loadingLocation && !activeLocation) {
+            return 'Detecting location...';
+        }
+        if (activeLocation) {
+            const area =
+                activeLocation.address_line_1 ||
+                activeLocation.city ||
+                activeLocation.formatted_address ||
+                '';
+            const suffix =
+                activeLocation.city && area !== activeLocation.city
+                    ? `, ${activeLocation.city}`
+                    : activeLocation.state
+                        ? `, ${activeLocation.state}`
+                        : '';
+            const text = `${area}${suffix}`.trim();
+            if (text) return text.slice(0, 44);
+        }
+        if (defaultAddress && !deliveryLocation) {
             const line =
                 defaultAddress.address_line_1 ||
                 (defaultAddress as any).address ||
@@ -242,32 +247,22 @@ const HomeHeader = ({
         if (!locationEnabled) {
             return 'Select location';
         }
-        if (loadingLocation && !activeLocation) {
-            return 'Detecting location...';
-        }
-        if (!activeLocation) {
-            return 'Select location';
-        }
-        const area =
-            activeLocation.address_line_1 ||
-            activeLocation.city ||
-            activeLocation.formatted_address ||
-            '';
-        const suffix =
-            activeLocation.city && area !== activeLocation.city
-                ? `, ${activeLocation.city}`
-                : activeLocation.state
-                  ? `, ${activeLocation.state}`
-                  : '';
-        return `${area}${suffix}`.slice(0, 44);
-    }, [activeLocation, defaultAddress, loadingLocation, locationEnabled]);
+        return 'Select location';
+    }, [
+        activeLocation,
+        defaultAddress,
+        deliveryLocation,
+        loadingLocation,
+        locationEnabled,
+    ]);
 
     const prakritiProgress = stablePrakritiProgress;
     const isPrakritiComplete = prakritiProgress >= 100;
 
+    // API-loaded label wins — customerData often keeps a stale prakriti_type after retake
     const prakritiName = useMemo(() => {
-        const fromCustomer = resolvePrakritiName(customerData, prakritiResultName);
-        const resolved = fromCustomer || prakritiResultName;
+        const resolved =
+            prakritiResultName || resolvePrakritiName(customerData);
         return resolved ? normalizePrakritiKey(resolved) : '';
     }, [customerData, prakritiResultName]);
 
@@ -285,14 +280,38 @@ const HomeHeader = ({
   const firstLetter = customerData?.first_name?.charAt(0)?.toUpperCase() || '';
   const addressCount = customerData?.addresses?.length || 0;
 
-  useFocusEffect(
-    useCallback(() => {
-      if (shouldRunThrottled('home-header-focus', 45_000)) {
-        fetchCustomerData(false);
-        dispatch(fetchCart(false));
-      }
-    }, [fetchCustomerData, dispatch]),
-  );
+    useFocusEffect(
+        useCallback(() => {
+            // Soft refresh profile/cart on focus (throttled)
+            if (shouldRunThrottled('home-header-focus', 45_000)) {
+                fetchCustomerData(false);
+                dispatch(fetchCart(false));
+            }
+            // Always re-read prakriti/info on focus so retake → Vata shows immediately
+            let cancelled = false;
+            (async () => {
+                if (!isPrakritiComplete) return;
+                try {
+                    const res: any = await _PROFILE_SERVICES.get_prakriti_info();
+                    const apiName = resolvePrakritiName(
+                        res?.data,
+                        res?.data?.result || res?.data?.dominant_prakriti,
+                    );
+                    if (!cancelled && apiName) {
+                        setPrakritiResultName(prev =>
+                            prev === apiName ? prev : apiName,
+                        );
+                        await Utils.storeData(PRAKRITI_RESULT_KEY, String(apiName));
+                    }
+                } catch {
+                    // keep last known label
+                }
+            })();
+            return () => {
+                cancelled = true;
+            };
+        }, [fetchCustomerData, dispatch, isPrakritiComplete]),
+    );
 
   useEffect(() => {
     const onAddressUpdated = () => {
@@ -319,17 +338,30 @@ const HomeHeader = ({
     useEffect(() => {
         let cancelled = false;
         const loadPrakritiName = async () => {
-            if (!isPrakritiComplete) return;
+            if (!isPrakritiComplete) {
+                if (!cancelled) setPrakritiResultName('');
+                return;
+            }
+
+            // Always hit prakriti/info — this is the source of truth after retake
+            let apiName = '';
+            try {
+                const res: any = await _PROFILE_SERVICES.get_prakriti_info();
+                apiName = resolvePrakritiName(
+                    res?.data,
+                    res?.data?.result || res?.data?.dominant_prakriti,
+                );
+            } catch {
+                // fall through to customer / storage
+            }
 
             const fromCustomer = resolvePrakritiName(customerData);
-            if (fromCustomer) {
-                if (!cancelled) {
-                    setPrakritiResultName(prev =>
-                        prev === fromCustomer ? prev : fromCustomer,
-                    );
-                }
+            const next = apiName || fromCustomer;
+
+            if (!cancelled && next) {
+                setPrakritiResultName(prev => (prev === next ? prev : next));
                 try {
-                    await Utils.storeData(PRAKRITI_RESULT_KEY, String(fromCustomer));
+                    await Utils.storeData(PRAKRITI_RESULT_KEY, String(next));
                 } catch {
                     // ignore
                 }
@@ -342,25 +374,9 @@ const HomeHeader = ({
                     setPrakritiResultName(prev =>
                         prev === String(stored) ? prev : String(stored),
                     );
-                    return;
                 }
             } catch {
-                // continue to API
-            }
-
-            try {
-                const res: any = await _PROFILE_SERVICES.get_prakriti_info();
-                const name = resolvePrakritiName(res?.data, res?.data?.result);
-                if (!cancelled && name) {
-                    setPrakritiResultName(name);
-                    try {
-                        await Utils.storeData(PRAKRITI_RESULT_KEY, String(name));
-                    } catch {
-                        // ignore storage errors
-                    }
-                }
-            } catch {
-                // ignore — header still works with fallback label
+                // ignore
             }
         };
         loadPrakritiName();
@@ -385,19 +401,29 @@ const HomeHeader = ({
           is_default: true,
         });
 
-        if (res?.success || res?.status === 200) {
-          setShowSheet(false);
-          await setDeliveryLocation(savedAddressToParsed(item));
-          await fetchCustomerData();
-          AddressEvents.emit(ADDRESS_UPDATED, res);
-        }
-      } catch (error) {
-        setLocalAddresses(previousAddresses);
-        console.log('DEFAULT_ADDRESS_ERROR', error);
-      }
-    },
-    [fetchCustomerData, setDeliveryLocation, localAddresses],
-  );
+                if (res?.success || res?.status === 200) {
+                    setShowSheet(false);
+                    await setDeliveryLocation(savedAddressToParsed(item));
+                    await fetchCustomerData();
+                    AddressEvents.emit(ADDRESS_UPDATED, res);
+                    return;
+                }
+                setLocalAddresses(previousAddresses);
+                showSuccessToast(
+                    res?.message || 'Could not update selected address',
+                    'error',
+                );
+            } catch (error: any) {
+                setLocalAddresses(previousAddresses);
+                console.log('DEFAULT_ADDRESS_ERROR', error);
+                showSuccessToast(
+                    error?.message || 'Could not update selected address',
+                    'error',
+                );
+            }
+        },
+        [fetchCustomerData, setDeliveryLocation, localAddresses],
+    );
 
   const openProfile = useCallback(() => {
     stackNavigation.navigate('TabStack', { screen: 'Profile' });

@@ -15,8 +15,12 @@ import {
   buildAppointmentDetailsParams,
   getConsultationScheduleLabels,
   canOfferReschedule,
+  formatAppointmentStatusLabel,
+  resolveAppointmentStatus,
 } from '../utils/appointmentUtils';
 import DoctorAvatar from './DoctorAvatar';
+import DietitianBadge from './DietitianBadge';
+import { formatDoctorSpecialization } from '../utils/doctorUtils';
 
 export type AppointmentStatus =
   | 'confirmed'
@@ -59,11 +63,6 @@ interface AppointmentCardProps {
   style?: ViewStyle;
 }
 
-const formatStatusLabel = (status?: string) =>
-  String(status || '')
-    .replace(/_/g, ' ')
-    .trim();
-
 const AppointmentCard = ({
   item,
   onAction,
@@ -74,7 +73,8 @@ const AppointmentCard = ({
   const doctorName =
     doctor?.doctor_name || item?.doctorName || 'Doctor';
   const specialty =
-    doctor?.doctor_specialization ||
+    formatDoctorSpecialization(doctor) ||
+    formatDoctorSpecialization(item) ||
     doctor?.doctor_designation ||
     doctor?.qualification ||
     item?.specialty ||
@@ -85,9 +85,9 @@ const AppointmentCard = ({
     () => getConsultationScheduleLabels(item),
     [item],
   );
-  const status = schedule.status || String(item?.appointment_status || '');
+  const status = resolveAppointmentStatus(item) || schedule.status;
   const statusStyle = useMemo(() => getStatusStyle(status.toLowerCase()), [status]);
-  const statusLabel = formatStatusLabel(status);
+  const statusLabel = formatAppointmentStatusLabel(status);
 
   const showReschedule = canOfferReschedule(
     status,
@@ -95,7 +95,8 @@ const AppointmentCard = ({
     schedule.timeRaw || item?.time || item?.start_time,
     item,
   );
-  const showReceipt = Boolean(item?.consultation_id);
+  // Receipt / invoice lives on Appointment Details (not the list card)
+  const showReceipt = false;
   // Book again only for past visits — not for upcoming bookings outside the 3h window
   const showBookAgain =
     !showReschedule &&
@@ -149,10 +150,12 @@ const AppointmentCard = ({
               </View>
             ) : null}
           </View>
-
-          <Text style={styles.specialty} numberOfLines={1}>
-            {specialty}
-          </Text>
+          <View style={styles.specialtyRow}>
+            <DietitianBadge doctor={item} style={styles.inlineDietitianBadge} />
+            <Text style={[styles.specialty, styles.specialtyInline]} numberOfLines={1}>
+              {specialty}
+            </Text>
+          </View>
 
           <View style={styles.metaChips}>
             {schedule.dayLabel || schedule.weekday ? (
@@ -280,6 +283,21 @@ const styles = StyleSheet.create({
     lineHeight: 16,
     color: Colors.primaryColor,
     fontFamily: Fonts.PoppinsMedium,
+  },
+  specialtyRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    minWidth: 0,
+  },
+  specialtyInline: {
+    flex: 1,
+    minWidth: 0,
+  },
+  inlineDietitianBadge: {
+    marginTop: 0,
+    paddingVertical: 0,
+    flexShrink: 0,
   },
   metaChips: {
     flexDirection: 'row',

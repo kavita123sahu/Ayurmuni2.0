@@ -10,6 +10,8 @@ import * as _CONSULT_SERVICES
     from '../services/ConsultServce';
 import { isAuthenticated } from '../services/guestAuth';
 import {
+    isActiveAppointmentStatus,
+    isAppointmentInPast,
     normalizeAppointmentListItem,
     sortAppointmentsByDateTime,
 } from '../utils/appointmentUtils';
@@ -128,6 +130,9 @@ export const useConsultData = (options: UseConsultDataOptions = {}) => {
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
+    void import('../utils/forceRefresh').then(({ bumpGlobalRefresh }) => {
+      bumpGlobalRefresh();
+    });
     fetchAllData({ isRefresh: true });
   }, [fetchAllData]);
 
@@ -141,8 +146,6 @@ export const useConsultData = (options: UseConsultDataOptions = {}) => {
     onRefresh,
   };
 };
-
-
 
 export const useDoctorSlots = (
     payload?: Record<string, any>,
@@ -202,8 +205,6 @@ export const useDoctorSlots = (
         refetch: fetchSlots,
     };
 };
-
-
 
 export const groupSlotsByTime = (
     slots: SlotItem[] = [],
@@ -380,9 +381,6 @@ export const useAllDoctors = (selectedFilters: DoctorListFilters = {}) => {
     return { loading, refreshing, doctorData, refetch: getAllDoctors, refresh };
 };
 
-
-
-
 /** Fetch size for home upcoming list — show all upcoming (sorted client-side). */
 const HOME_UPCOMING_PAGE_SIZE = 50;
 
@@ -404,25 +402,43 @@ export const useUpcomingAppointmentsPreview = (
                 setLoading(true);
             }
 
-            const res = await _CONSULT_SERVICES.getConsultHistory({
-                page: 1,
-                page_size: pageSize,
-                // Prefer confirmed upcoming for Home preview
-                appointment_status: 'confirmed',
-            });
-
-            const results = res?.data?.results || [];
-            // Home list: only confirmed appointments (exclude pending/reschedule/etc.)
-            const confirmedOnly = results
-                .map((item: any) => normalizeAppointmentListItem(item))
-                .filter((item: any) => {
-                    const status = String(item?.status || '')
-                        .trim()
-                        .toLowerCase();
-                    return status === 'confirmed';
+            // One history request. Status is filtered here so Home does not
+            // hit consultation-history once per status.
+            const response = await _CONSULT_SERVICES
+                .getConsultHistory({ page: 1, page_size: pageSize })
+                .catch((e: any) => {
+                    console.log('UPCOMING_PREVIEW_FETCH_ERROR', e);
+                    return null;
                 });
 
-            setAppointments(sortAppointmentsByDateTime(confirmedOnly));
+            const seen = new Set<string>();
+            const active = (response?.data?.results || [])
+                .map((item: any) => normalizeAppointmentListItem(item))
+                .filter((item: any) => {
+                    const key = String(item?.appointment_id || item?.consultation_id || '');
+                    if (key && seen.has(key)) return false;
+                    if (key) seen.add(key);
+                    if (String(item?.status || '').toLowerCase() === 'completed') {
+                        return !isAppointmentInPast(item);
+                    }
+                    return (
+                        isActiveAppointmentStatus(item?.status) ||
+                        String(item?.call_status || '').toLowerCase() === 'in_progress'
+                    );
+                });
+            console.log(
+                'UPCOMING_PREVIEW =>',
+                active.map((item: any) => ({
+                    id: item?.appointment_id,
+                    date: item?.date,
+                    time: item?.time,
+                    end: item?.endTime,
+                    status: item?.status,
+                    call: item?.call_status,
+                })),
+            );
+
+            setAppointments(sortAppointmentsByDateTime(active));
         } catch (e) {
             console.log('UPCOMING_PREVIEW_ERROR', e);
             setAppointments([]);
@@ -439,6 +455,15 @@ export const useUpcomingAppointmentsPreview = (
         () => fetchPreview({ silent: true }),
         [fetchPreview],
     );
+
+    // Poll so doctor-started calls (call_status in_progress) update the Home banner
+    useEffect(() => {
+        if (!(appointments || []).length) return;
+        const timer = setInterval(() => {
+            void fetchPreview({ silent: true });
+        }, 20_000);
+        return () => clearInterval(timer);
+    }, [appointments.length, fetchPreview]);
 
     return {
         loading,
@@ -553,6 +578,8 @@ export const useAppointmentHistory = (filters?: {
     const refreshUpcoming = useCallback(async () => {
         try {
             setRefreshing(true);
+            const { bumpGlobalRefresh } = await import('../utils/forceRefresh');
+            bumpGlobalRefresh();
             pageRef.current = 1;
             hasMoreRef.current = true;
             setPage(1);
@@ -583,7 +610,3 @@ export const useAppointmentHistory = (filters?: {
         hasMore,
     };
 };
-
-
-
-

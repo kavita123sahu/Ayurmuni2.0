@@ -5,6 +5,60 @@ const normalizeStatus = (status?: string | null): string =>
     .trim()
     .toLowerCase();
 
+/**
+ * Prefer appointment_status over generic status so list cards match
+ * detail (e.g. cancellation_requested vs confirmed).
+ */
+export const resolveAppointmentStatus = (item?: any): string => {
+  if (item == null) return '';
+  if (typeof item === 'string') return normalizeStatus(item);
+
+  const root = item?.rawData ?? item;
+  const appt = root?.appointment ?? item?.appointment ?? root;
+  const candidates = [
+    appt?.appointment_status,
+    root?.appointment_status,
+    item?.appointment_status,
+    appt?.status,
+    root?.status,
+    item?.status,
+  ]
+    .map(normalizeStatus)
+    .filter(Boolean);
+
+  if (candidates.includes('cancellation_requested')) {
+    return 'cancellation_requested';
+  }
+
+  const status = candidates[0] || '';
+  // Joined / ended call must not surface as Missed for dependent bookings
+  if (status === 'missed' || status === 'no_show' || status === 'noshow') {
+    const callStatus = normalizeStatus(
+      appt?.call_status ?? root?.call_status ?? item?.call_status,
+    );
+    if (
+      ['joined', 'ended', 'left', 'completed', 'in_progress'].includes(
+        callStatus,
+      )
+    ) {
+      return 'completed';
+    }
+  }
+
+  return status;
+};
+
+/** Patient-facing status label — keeps Cancellation Request consistent. */
+export const formatAppointmentStatusLabel = (status?: string | null): string => {
+  const key = normalizeStatus(status);
+  if (!key) return '';
+  if (key === 'cancellation_requested') return 'Cancellation Request';
+  if (key === 'testing' || key === 'test') return 'Processing';
+  if (key === 'pending') return 'Pending';
+  const raw = key.replace(/_/g, ' ').trim();
+  return raw.charAt(0).toUpperCase() + raw.slice(1);
+};
+
 /** Statuses where the patient can still reschedule the same appointment. */
 export const RESCHEDULABLE_STATUSES = [
   ...UPCOMING_STATUS,
@@ -106,10 +160,19 @@ export const hasAlreadyRescheduled = (source?: any): boolean => {
   return false;
 };
 
-const isWithinModifyWindow = (
+/** Reschedule only when start is MORE than 2 hours away. */
+export const RESCHEDULE_WINDOW_MINUTES = 120;
+/** Refund on cancel only when start is MORE than 3 hours away. */
+export const CANCEL_REFUND_WINDOW_MINUTES = 180;
+
+/**
+ * True when appointment start is still MORE than `windowMinutes` away
+ * (used for reschedule lock + refund eligibility).
+ */
+export const isWithinModifyWindow = (
   dateStr?: string,
   timeStr?: string,
-  windowMinutes = 180,
+  windowMinutes = CANCEL_REFUND_WINDOW_MINUTES,
 ): boolean => {
   const date = String(dateStr || '').trim();
   const time = String(timeStr || '').trim();
@@ -119,20 +182,30 @@ const isWithinModifyWindow = (
   if (mins == null || !Number.isFinite(mins)) return false;
   if (mins <= 0) return false;
 
-  const lockWindow = Math.max(1, Math.floor(Number(windowMinutes) || 180));
+  const lockWindow = Math.max(
+    1,
+    Math.floor(Number(windowMinutes) || CANCEL_REFUND_WINDOW_MINUTES),
+  );
   if (mins <= lockWindow) return false;
   return true;
 };
 
+/** Cancel refund initiates only outside the 3-hour lock window. */
+export const isCancelRefundEligible = (
+  dateStr?: string,
+  timeStr?: string,
+): boolean =>
+  isWithinModifyWindow(dateStr, timeStr, CANCEL_REFUND_WINDOW_MINUTES);
+
 /**
  * Allow reschedule when status is reschedulable, not already rescheduled once,
- * and start is MORE than `windowMinutes` away (default 3 hours).
+ * and start is MORE than `windowMinutes` away (default 2 hours).
  */
 export const canModifyAppointment = (
   status?: string | null,
   dateStr?: string,
   timeStr?: string,
-  windowMinutes = 180,
+  windowMinutes = RESCHEDULE_WINDOW_MINUTES,
   item?: any,
 ): boolean => {
   if (hasAlreadyRescheduled(item ?? status)) return false;
@@ -140,21 +213,24 @@ export const canModifyAppointment = (
   return isWithinModifyWindow(dateStr, timeStr, windowMinutes);
 };
 
-/** Reschedule button — hidden after one successful reschedule. */
+/** Reschedule button — hidden inside 2h window and after one successful reschedule. */
 export const canOfferReschedule = (
   status?: string | null,
   dateStr?: string,
   timeStr?: string,
   item?: any,
-  windowMinutes = 180,
+  windowMinutes = RESCHEDULE_WINDOW_MINUTES,
 ): boolean => canModifyAppointment(status, dateStr, timeStr, windowMinutes, item);
 
-/** Cancel stays available even after a one-time reschedule (within the time window). */
+/**
+ * Cancel stays available for cancelable statuses until the visit starts,
+ * even inside the 3-hour window (refund may not apply — see isCancelRefundEligible).
+ */
 export const canOfferCancel = (
   status?: string | null,
   dateStr?: string,
   timeStr?: string,
-  windowMinutes = 180,
+  _windowMinutes?: number,
 ): boolean => {
   const value = normalizeStatus(status);
   if (!value) return false;
@@ -174,7 +250,15 @@ export const canOfferCancel = (
     return false;
   }
   if (!CANCELABLE_STATUSES.includes(value)) return false;
-  return isWithinModifyWindow(dateStr, timeStr, windowMinutes);
+
+  const date = String(dateStr || '').trim();
+  const time = String(timeStr || '').trim();
+  if (!date) return true;
+
+  const mins = getMinutesUntilAppointment(date, time || undefined);
+  if (mins == null || !Number.isFinite(mins)) return true;
+  // Hide cancel once the consultation has started / passed
+  return mins > 0;
 };
 
 /** Resolve date/time from list or detail appointment payloads. */
@@ -297,12 +381,50 @@ export function buildVideoCallNavParams(
 ) {
   const ids = getAppointmentIds(source);
   const primaryId = ids.appointmentId || ids.consultationId;
+  const slot = resolveAppointmentSlot(source);
 
   return {
     appointmentId: primaryId,
     ...(ids.consultationId ? { consultationId: ids.consultationId } : {}),
+    ...(slot.date ? { appointmentDate: slot.date } : {}),
+    ...(slot.startTime ? { startTime: slot.startTime } : {}),
+    ...(slot.endTime ? { endTime: slot.endTime } : {}),
     ...extras,
   };
+}
+
+/** Date / start / end from list items, raw API rows or detail payloads. */
+export function resolveAppointmentSlot(source?: any): {
+  date?: string;
+  startTime?: string;
+  endTime?: string;
+} {
+  if (!source) return {};
+  const root = source?.rawData ?? source;
+  const appt = source?.appointment ?? root?.appointment ?? root;
+  const pick = (...values: any[]) => {
+    const found = values.find(v => v != null && String(v).trim() !== '');
+    return found != null ? String(found).trim() : undefined;
+  };
+  return {
+    date: pick(source?.date, appt?.appointment_date, root?.appointment_date),
+    startTime: pick(source?.time, appt?.start_time, root?.start_time),
+    endTime: pick(source?.endTime, appt?.end_time, root?.end_time),
+  };
+}
+
+/** Slot start / end timestamps; `endMs` is null when end_time is missing or invalid. */
+export function getAppointmentSlotMs(
+  date?: string,
+  startTime?: string,
+  endTime?: string,
+): { startMs: number | null; endMs: number | null } {
+  const start = parseAppointmentStart(date, startTime);
+  const end = endTime ? parseAppointmentStart(date, endTime) : null;
+  const startMs = start ? start.getTime() : null;
+  const endMs =
+    end && (startMs == null || end.getTime() > startMs) ? end.getTime() : null;
+  return { startMs, endMs };
 }
 
 /** Params for AppointmentDetails screen. */
@@ -359,7 +481,12 @@ export function normalizeAppointmentListItem(item: any) {
     '';
 
   const endTime = appointment?.end_time || item?.end_time || null;
+  const timeLabel = formatAppointmentTimeLabel(time);
   const endTimeLabel = endTime ? formatAppointmentTimeLabel(endTime) : null;
+  const timeRangeLabel =
+    timeLabel && endTimeLabel
+      ? `${timeLabel} – ${endTimeLabel}`
+      : timeLabel;
 
   const patient =
     appointment?.patient ?? root?.patient ?? item?.patient ?? null;
@@ -380,6 +507,43 @@ export function normalizeAppointmentListItem(item: any) {
       '',
   ).trim();
 
+  // Who cancelled / missed — support common API field names
+  const cancelledByRaw =
+    appointment?.cancelled_by ??
+    appointment?.canceled_by ??
+    appointment?.cancelled_by_role ??
+    appointment?.cancelled_by_type ??
+    appointment?.cancellation_actor ??
+    root?.cancelled_by ??
+    item?.cancelled_by ??
+    '';
+  const missedByRaw =
+    appointment?.missed_by ??
+    appointment?.missed_by_role ??
+    appointment?.no_show_by ??
+    root?.missed_by ??
+    item?.missed_by ??
+    '';
+  const formatActor = (raw: any) => {
+    const key = String(raw || '')
+      .trim()
+      .toLowerCase()
+      .replace(/\s+/g, '_');
+    if (!key) return '';
+    if (key.includes('doctor') || key === 'provider' || key === 'clinic') {
+      return 'Doctor';
+    }
+    if (key.includes('patient') || key.includes('user') || key === 'customer') {
+      return 'You';
+    }
+    if (key.includes('system') || key.includes('admin') || key.includes('auto')) {
+      return 'System';
+    }
+    return String(raw)
+      .replace(/[_-]+/g, ' ')
+      .replace(/\b\w/g, c => c.toUpperCase());
+  };
+
   return {
     consultation_id: ids.consultationId || ids.appointmentId,
     appointment_id: ids.appointmentId || ids.consultationId,
@@ -390,19 +554,52 @@ export function normalizeAppointmentListItem(item: any) {
       : specialty,
     date,
     time,
+    timeLabel,
+    timeRangeLabel,
     endTime,
     endTimeLabel,
-    status: appointment?.appointment_status ?? item?.appointment_status ?? item?.status,
+    status: resolveAppointmentStatus({
+      appointment,
+      appointment_status: item?.appointment_status ?? appointment?.appointment_status,
+      status: item?.status ?? appointment?.status,
+      rawData: root,
+    }),
     call_status:
       appointment?.call_status ??
       item?.call_status ??
       item?.rawData?.call_status,
+    cancelledBy: formatActor(cancelledByRaw),
+    missedBy: formatActor(missedByRaw),
     image,
     patientId,
     patientName,
     patient,
     rawData: root,
   };
+}
+
+/** Human label for who cancelled / missed (list + details). */
+export function getAppointmentActorLabel(item: any): string {
+  const normalized =
+    item?.cancelledBy || item?.missedBy
+      ? item
+      : normalizeAppointmentListItem(item);
+  const status = String(
+    normalized?.status || resolveAppointmentStatus(item) || '',
+  ).toLowerCase();
+  if (['cancelled', 'canceled', 'cancellation_requested'].includes(status)) {
+    return normalized?.cancelledBy
+      ? `Cancelled by ${normalized.cancelledBy}`
+      : '';
+  }
+  if (['missed', 'no_show', 'noshow'].includes(status)) {
+    return normalized?.missedBy
+      ? `Missed by ${normalized.missedBy}`
+      : normalized?.cancelledBy
+        ? `Missed by ${normalized.cancelledBy}`
+        : '';
+  }
+  return '';
 }
 
 /** Appointment patient id for active-profile / switch checks. */
@@ -589,14 +786,21 @@ export function isAppointmentInPast(raw: any): boolean {
   const item = normalizeAppointmentListItem(raw);
   const now = Date.now();
 
-  const end = parseAppointmentStart(item.date, item.endTime || undefined);
+  const start = parseAppointmentStart(item.date, item.time);
+  const parsedEnd = item.endTime
+    ? parseAppointmentStart(item.date, item.endTime)
+    : null;
+  // Ignore bad end_time (missing / before start) so the slot is not hidden early
+  const end =
+    parsedEnd && (!start || parsedEnd.getTime() > start.getTime())
+      ? parsedEnd
+      : null;
   if (end && now >= end.getTime()) {
     return true;
   }
 
-  const start = parseAppointmentStart(item.date, item.time);
   // No usable end_time: treat as past ~60 min after start
-  if (start && (!item.endTime || !end) && now >= start.getTime() + 60 * 60 * 1000) {
+  if (start && !end && now >= start.getTime() + 60 * 60 * 1000) {
     return true;
   }
 
@@ -687,26 +891,28 @@ export const formatAppointmentDateFull = (dateStr?: string): string => {
   });
 };
 
+/** Always 12-hour wall clock, e.g. `10:30 AM` (never 24-hour `22:30`). */
 export const formatAppointmentTimeLabel = (timeStr?: string) => {
   if (!timeStr) {
     return '';
   }
 
   const raw = String(timeStr).trim();
-  if (/am|pm/i.test(raw)) {
-    return raw;
-  }
-
-  const match = raw.match(/(\d{1,2}):(\d{2})(?::(\d{2}))?/);
+  const match = raw.match(/(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(AM|PM)?/i);
   if (!match) {
     return raw;
   }
 
   let hours = Number(match[1]);
   const minutes = match[2];
+  const meridiemRaw = (match[4] || '').toUpperCase();
+
+  if (meridiemRaw === 'PM' && hours < 12) hours += 12;
+  if (meridiemRaw === 'AM' && hours === 12) hours = 0;
+
   const meridiem = hours >= 12 ? 'PM' : 'AM';
-  hours = hours % 12 || 12;
-  return `${hours}:${minutes} ${meridiem}`;
+  const hour12 = hours % 12 || 12;
+  return `${hour12}:${minutes} ${meridiem}`;
 };
 
 /** Normalize history/recent API item into display fields */
@@ -728,27 +934,6 @@ export const formatAppointmentTimeLabel = (timeStr?: string) => {
 //     '';
 // const endTime = item?.end_time || item?.appointment?.end_time || null;
 
-//   const weekday = formatAppointmentWeekday(dateRaw);
-//   const dayLabel = formatAppointmentDayLabel(dateRaw);
-//   const dateLabel = formatAppointmentDateFull(dateRaw);
-//   const timeLabel = formatAppointmentTimeLabel(timeRaw);
-//   const endTimeLabel = endTime ? formatAppointmentTimeLabel(endTime) : null;
-//   return {
-//     dateRaw,
-//     timeRaw,
-//     status: String(status || ''),
-//     weekday,
-//     dayLabel,
-//     dateLabel,
-//     timeLabel,
-//     endTimeLabel,
-//     /** Compact line: Today · 31 Jul 2026 · 10:30 AM */
-//     scheduleLine: [dayLabel || weekday, dateLabel, timeLabel]
-//       .filter(Boolean)
-//       .join(' · '),
-//   };
-// };
-
 export const getConsultationScheduleLabels = (item: any) => {
   const dateRaw =
     item?.date ||
@@ -762,11 +947,7 @@ export const getConsultationScheduleLabels = (item: any) => {
     item?.appointment?.start_time ||
     '';
 
-  const status =
-    item?.status ||
-    item?.appointment_status ||
-    item?.appointment?.appointment_status ||
-    '';
+  const status = resolveAppointmentStatus(item);
 
   const endTime =
     item?.end_time ||
@@ -813,7 +994,6 @@ export const formatDoctorDisplayName = (name?: string) => {
   return /^dr\.?\s/i.test(trimmed) ? trimmed : `Dr. ${trimmed}`;
 };
 
-
 export const getMinutesUntilAppointment = (
   dateStr?: string,
   timeStr?: string,
@@ -835,11 +1015,90 @@ export type JoinableAppointment = {
 
 const DEFAULT_JOIN_WINDOW_MINUTES = 5;
 
+/** Call states that close the join window (patient `left` can still rejoin inside the slot). */
+const JOIN_CLOSED_CALL_STATUSES = new Set([
+  'ended',
+  'completed',
+  'cancelled',
+  'canceled',
+  'no_show',
+  'missed',
+  'rejected',
+]);
+
+/** Appointment states that can still have a live consultation. */
+const JOINABLE_APPOINTMENT_STATUSES = new Set([
+  'confirmed',
+  'upcoming',
+  'booked',
+  'scheduled',
+  'reschedule',
+  'rescheduled',
+  're-scheduled',
+  're_scheduled',
+  'cancellation_requested',
+  'in_progress',
+  'ongoing',
+  'started',
+  'live',
+]);
+
+export const isActiveAppointmentStatus = (status?: string | null) =>
+  JOINABLE_APPOINTMENT_STATUSES.has(String(status || '').trim().toLowerCase());
+
+/** Start / effective end (end_time, or start + 15 min) of an appointment slot. */
+const getSlotBounds = (item: ReturnType<typeof normalizeAppointmentListItem>) => {
+  const start = parseAppointmentStart(item.date, item.time);
+  if (!start) return null;
+  const end = item.endTime ? parseAppointmentStart(item.date, item.endTime) : null;
+  const endMs =
+    end && end.getTime() > start.getTime()
+      ? end.getTime()
+      : start.getTime() + 15 * 60 * 1000;
+  return { startMs: start.getTime(), endMs };
+};
+
+/** True while the appointment is inside its join window (5 min before start → end). */
+export function isAppointmentJoinable(
+  raw: any,
+  windowMinutes = DEFAULT_JOIN_WINDOW_MINUTES,
+): boolean {
+  if (!raw) return false;
+  const item = normalizeAppointmentListItem(raw);
+  const callStatus = String(item.call_status || '').toLowerCase().trim();
+  if (JOIN_CLOSED_CALL_STATUSES.has(callStatus)) return false;
+  if (callStatus !== 'in_progress' && !isActiveAppointmentStatus(item.status)) {
+    return false;
+  }
+  const bounds = getSlotBounds(item);
+  if (!bounds) return callStatus === 'in_progress';
+  const now = Date.now();
+  if (now >= bounds.endMs) return false;
+  if (callStatus === 'in_progress') return true;
+  return bounds.startMs - now <= windowMinutes * 60 * 1000;
+}
+
+/** ms until the join window opens or closes (null when nothing changes anymore). */
+export function getMsUntilJoinWindowChange(
+  raw: any,
+  windowMinutes = DEFAULT_JOIN_WINDOW_MINUTES,
+): number | null {
+  if (!raw) return null;
+  const item = normalizeAppointmentListItem(raw);
+  const bounds = getSlotBounds(item);
+  if (!bounds) return null;
+  const now = Date.now();
+  const opensAt = bounds.startMs - windowMinutes * 60 * 1000;
+  const next = [opensAt, bounds.endMs].find(t => t > now);
+  return next != null ? next - now : null;
+}
+
 /**
- * Home "Join Now" banner rules:
- * - Hide ONLY when: end_time has passed, OR call_status is completed/ended
- * - Show when call_status is `in_progress` (and not past end)
- * - Or show within `windowMinutes` (default 5) before start until end_time
+ * Home "Join Now" banner — same rules as list/details Join:
+ * - Show from `windowMinutes` (default 5) before start until end_time
+ *   (no end_time → start + 15 min)
+ * - Doctor started early (`in_progress`) → show until end_time
+ * - Hide when end_time is reached, or call is ended/completed/cancelled
  */
 export function getJoinableAppointment(
   items: any[] = [],
@@ -852,8 +1111,8 @@ export function getJoinableAppointment(
     const item = normalizeAppointmentListItem(raw);
     const callStatus = String(item.call_status || '').toLowerCase().trim();
 
-    // Hide when call is completed / ended (only this call-status condition)
-    if (ENDED_CALL_STATUSES.has(callStatus)) {
+    // Doctor finished / cancelled consultation → no Join (matches list/details)
+    if (JOIN_CLOSED_CALL_STATUSES.has(callStatus)) {
       continue;
     }
 
@@ -873,30 +1132,45 @@ export function getJoinableAppointment(
       ? validEnd.getTime()
       : start.getTime() + 15 * 60 * 1000;
 
-    // Hide when appointment end_time is reached / matched
+    // Slot ended → remove banner (even if call_status stuck on in_progress)
     if (now >= endMs) {
       continue;
     }
 
     const msUntilStart = start.getTime() - now;
 
+    // Doctor already started — show even if before the 5‑min pre-window
+    if (callStatus === 'in_progress') {
+      return {
+        item,
+        // Floor so 3:45→3:48 shows 3 min left; 0 when under a minute
+        minutesLeft: Math.max(0, Math.floor((endMs - now) / 60000)),
+        isLive: true,
+      };
+    }
+
     // Not yet inside the pre-start window (e.g. 9:12 slot → visible from 9:07)
     if (msUntilStart > windowMs) {
       continue;
     }
 
-    if (callStatus === 'in_progress') {
-      return { item, minutesLeft: 0, isLive: true };
+    // Skip terminal appointment statuses
+    if (!isActiveAppointmentStatus(item.status)) {
+      continue;
     }
 
     const withinPreWindow = msUntilStart >= 0;
     const afterStartBeforeEnd = msUntilStart < 0 && now < endMs;
 
     if (withinPreWindow || afterStartBeforeEnd) {
+      // Before start → minutes until start; after start → minutes until end
+      const minutesLeft = withinPreWindow
+        ? Math.max(0, Math.ceil(msUntilStart / 60000))
+        : Math.max(0, Math.floor((endMs - now) / 60000));
       return {
         item,
-        minutesLeft: Math.max(0, Math.ceil(msUntilStart / 60000)),
-        isLive: msUntilStart <= 0 || callStatus === 'in_progress',
+        minutesLeft,
+        isLive: false,
       };
     }
   }

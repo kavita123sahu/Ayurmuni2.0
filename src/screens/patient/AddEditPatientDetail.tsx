@@ -18,6 +18,9 @@ import AppHeader from '../../components/AppHeader';
 import { Colors } from '../../common/Colors';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as _PATIENT_SERVICES from '../../services/PatientServices';
+import { invalidateProfileThrottles } from '../../utils/fetchThrottle';
+import { useAppDispatch } from '../../store/hooks';
+import { fetchCustomerData } from '../../store/slices/homeSlice';
 import { usePatientForm } from '../../hooks/usePatientData';
 import { BUTTON, RADIUS, SPACING, TYPO } from '../../constants/responsive';
 
@@ -172,16 +175,19 @@ const getFieldErrors = (
   }
 
   if (data.height.trim()) {
-    const h = Number(data.height);
-    if (!Number.isFinite(h) || h <= 0) {
-      errors.height = 'Enter a valid height';
+    // Ignore phone autofill bleed (10-digit mobile) in Height
+    if (!/^[6-9]\d{9}$/.test(data.height.trim())) {
+      const h = Number(data.height);
+      if (!Number.isFinite(h) || h < 50 || h > 250) {
+        errors.height = 'Enter a valid height (50–250 cm)';
+      }
     }
   }
 
   if (data.weight.trim()) {
     const w = Number(data.weight);
-    if (!Number.isFinite(w) || w <= 0) {
-      errors.weight = 'Enter a valid weight';
+    if (!Number.isFinite(w) || w < 10 || w > 300) {
+      errors.weight = 'Enter a valid weight (10–300 kg)';
     }
   }
 
@@ -226,6 +232,7 @@ const mapApiErrorsToFields = (apiError: Record<string, any>): FieldErrors => {
 
 export default function AddEditPatientDetail(props: any) {
   const { mode, patientId } = props.route.params || {};
+  const dispatch = useAppDispatch();
   const { patientData } = usePatientForm(mode === 'edit' ? patientId : undefined);
   const insets = useSafeAreaInsets();
 
@@ -248,8 +255,14 @@ export default function AddEditPatientDetail(props: any) {
       dob: patientData?.dob || '',
       gender: patientData?.gender || '',
       bloodG: patientData?.blood_group || '',
-      height: String(patientData?.height || ''),
-      weight: String(patientData?.weight || ''),
+      height:
+        patientData?.height != null && Number(patientData.height) > 0
+          ? String(patientData.height)
+          : '',
+      weight:
+        patientData?.weight != null && Number(patientData.weight) > 0
+          ? String(patientData.weight)
+          : '',
       phonenumber: patientData?.phone_number || '',
       email: patientData?.email || '',
       relation: patientData?.relation || '',
@@ -300,15 +313,21 @@ export default function AddEditPatientDetail(props: any) {
       return;
     }
 
-    const payload = {
+    // Guard: OS phone suggestion sometimes lands in Height (looks like a 10-digit mobile)
+    let heightValue = formData.height.trim();
+    if (/^[6-9]\d{9}$/.test(heightValue)) {
+      heightValue = '';
+      updateField('height', '');
+    }
+    const heightNum = Number(heightValue);
+    const weightNum = Number(formData.weight);
+    const payload: Record<string, any> = {
       first_name,
       last_name,
       dob: formatToISODate(formData.dob),
       gender: formData.gender.toLowerCase(),
       blood_group: formData.bloodG,
       relation: isSelf ? 'self' : formData.relation.toLowerCase(),
-      height: Number(formData.height) || 0,
-      weight: Number(formData.weight) || 0,
       phone_number: formData.phonenumber,
       email: formData.email,
       profile_picture: formData.profilePicture,
@@ -319,6 +338,13 @@ export default function AddEditPatientDetail(props: any) {
       insurance_policy_number: formData.policyNO,
       insurance_valid_thru: formatToISODate(formData.valid),
     };
+    // Only send height/weight when filled — avoid API "weight" errors from 0/null
+    if (heightValue && Number.isFinite(heightNum) && heightNum > 0) {
+      payload.height = heightNum;
+    }
+    if (formData.weight.trim() && Number.isFinite(weightNum) && weightNum > 0) {
+      payload.weight = weightNum;
+    }
 
     try {
       setSaving(true);
@@ -335,6 +361,8 @@ export default function AddEditPatientDetail(props: any) {
         throw apiError;
       }
 
+      invalidateProfileThrottles();
+      dispatch(fetchCustomerData(true));
       props.navigation.goBack();
     } catch (error: any) {
       const apiError = error?.response?.data || error;
@@ -467,6 +495,10 @@ export default function AddEditPatientDetail(props: any) {
               placeholder="180"
               value={formData.height}
               keyboardType="decimal-pad"
+              // Block phone autofill from landing in Height
+              autoComplete="off"
+              textContentType="none"
+              importantForAutofill="no"
               onChangeText={(text: string) =>
                 updateField('height', text.replace(/[^0-9.]/g, ''))
               }
@@ -480,6 +512,9 @@ export default function AddEditPatientDetail(props: any) {
               placeholder="75"
               value={formData.weight}
               keyboardType="decimal-pad"
+              autoComplete="off"
+              textContentType="none"
+              importantForAutofill="no"
               onChangeText={(text: string) =>
                 updateField('weight', text.replace(/[^0-9.]/g, ''))
               }
@@ -497,6 +532,9 @@ export default function AddEditPatientDetail(props: any) {
             value={formData.phonenumber}
             keyboardType="number-pad"
             maxLength={10}
+            autoComplete="tel"
+            textContentType="telephoneNumber"
+            importantForAutofill="yes"
             onChangeText={(text: string) =>
               updateField('phonenumber', text.replace(/[^0-9]/g, ''))
             }
@@ -512,6 +550,9 @@ export default function AddEditPatientDetail(props: any) {
             value={formData.email}
             keyboardType="email-address"
             autoCapitalize="none"
+            autoComplete="email"
+            textContentType="emailAddress"
+            importantForAutofill="yes"
             onChangeText={(text: string) => updateField('email', text)}
             rightIconName="mail"
             containerStyle={fieldGap}
@@ -556,6 +597,9 @@ export default function AddEditPatientDetail(props: any) {
               rightIconName="phone"
               maxLength={10}
               value={formData.EmergencyNO}
+              autoComplete="tel"
+              textContentType="telephoneNumber"
+              importantForAutofill="yes"
               onChangeText={(text: string) =>
                 updateField('EmergencyNO', text.replace(/[^0-9]/g, ''))
               }

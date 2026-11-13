@@ -14,7 +14,6 @@ import { getDoctorLocationLine } from './doctorSlipUtils';
 import {
   formatIssuedLabel,
   getAllergiesList,
-  getClinicalAdvisory,
   getConcernText,
   getDiagnosisText,
   getDietAdvice,
@@ -22,15 +21,20 @@ import {
   getDontList,
   getFollowUpInfo,
   getMedicineItems,
-  getMedicinePrice,
+  getMedicineMrp,
+  getMedicineQuantity,
   getMedicineScheduleChips,
+  getMedicineUnitPrice,
   getPastIllnessText,
   getFamilyHistoryText,
+  getPersonalHistoryLines,
+  getGynaecologicalLines,
   getPaymentAmount,
   getRecommendedDietPlans,
   getSuggestionList,
   getSymptomDescription,
   normalizePrescriptionPayload,
+  parseAmount,
 } from './prescriptionDetailUtils';
 
 const pick = (...values: any[]) => {
@@ -46,16 +50,6 @@ const money = (value: number | string | undefined | null) => {
   const num = Number(value);
   if (!Number.isFinite(num)) return '-';
   return num.toFixed(2);
-};
-
-const medicineLineTotal = (med: any): string => {
-  const price = getMedicinePrice(med);
-  const qty = Number(pick(med?.quantity, med?.qty, 1));
-  if (price == null) return '-';
-  const num = Number(price);
-  if (!Number.isFinite(num)) return String(price);
-  const q = Number.isFinite(qty) ? qty : 1;
-  return money(num * q);
 };
 
 const buildMedicineTableRow = (med: any, index: number) => {
@@ -86,24 +80,31 @@ const buildMedicineTableRow = (med: any, index: number) => {
     med?.advice,
   );
 
-  const description = [name + subtitleLine, schedule, instruction]
+  const unitPrice = getMedicineUnitPrice(med);
+  const unitMrp = getMedicineMrp(med);
+  const qty = getMedicineQuantity(med);
+  const lineTotal = unitPrice != null ? unitPrice * qty : null;
+  const lineMrp = (unitMrp ?? unitPrice ?? 0) * qty;
+  const mrpNote =
+    unitMrp != null && unitPrice != null && unitMrp > unitPrice
+      ? `MRP ${money(unitMrp)}`
+      : '';
+
+  const description = [name + subtitleLine, schedule, instruction, mrpNote]
     .filter(Boolean)
     .join(' | ');
-
-  const price = getMedicinePrice(med);
-  const qtyStr = pick(med?.quantity, med?.qty) || '1';
-  const rate = price != null ? money(price) : '-';
-  const lineTotal = medicineLineTotal(med);
 
   return {
     sno: index + 1,
     description,
-    qty: qtyStr,
-    rate,
-    taxableValue: rate,
+    qty: String(qty),
+    rate: unitPrice != null ? money(unitPrice) : '-',
+    taxableValue: lineTotal != null ? money(lineTotal) : '-',
     tax: '0.00',
-    total: lineTotal,
-    lineTotalNum: lineTotal !== '-' ? Number(lineTotal) : 0,
+    total: lineTotal != null ? money(lineTotal) : '-',
+    qtyNum: qty,
+    lineTotalNum: lineTotal ?? 0,
+    lineMrpNum: lineTotal != null ? lineMrp : 0,
   };
 };
 
@@ -204,15 +205,20 @@ export async function buildPrescriptionPdfFromData(
     : pick(doctor?.doctor_specialization, doctor?.specialization);
 
   const medicines = getMedicineItems(prescription);
+  console.log('PRESCRIPTION_PDF_ITEMS =>', JSON.stringify(medicines));
   const medicineRows = medicines.map(buildMedicineTableRow);
-  const medicineTotalSum = medicineRows.reduce(
-    (sum, row) => sum + row.lineTotalNum,
-    0,
-  );
+  const medicineTotalSum = medicineRows.reduce((sum, row) => sum + row.lineTotalNum, 0);
+  const medicineMrpSum = medicineRows.reduce((sum, row) => sum + row.lineMrpNum, 0);
+  const totalQty = medicineRows.reduce((sum, row) => sum + row.qtyNum, 0);
+  console.log('PRESCRIPTION_PDF_TOTALS =>', {
+    totalQty,
+    medicineMrpSum,
+    medicineTotalSum,
+  });
 
   const lineItems =
     medicineRows.length > 0
-      ? medicineRows.map(({ lineTotalNum: _t, ...row }) => row)
+      ? medicineRows.map(({ lineTotalNum: _t, lineMrpNum: _m, qtyNum: _q, ...row }) => row)
       : [
           {
             sno: 1,
@@ -228,6 +234,8 @@ export async function buildPrescriptionPdfFromData(
   const concernText = getConcernText(data);
   const diagnosisText = getDiagnosisText(prescription);
   const symptomText = getSymptomDescription(prescription);
+  // Match Prescription Detail UI — chief complaint uses symptom/chief fields first
+  const chiefComplaint = symptomText || concernText;
   const appointmentNotes = pick(
     appointment?.appointment_notes,
     data?.appointment_notes,
@@ -238,42 +246,17 @@ export async function buildPrescriptionPdfFromData(
   const doItems = getDoList(prescription);
   const dontItems = getDontList(prescription);
   const suggestions = getSuggestionList(prescription);
-  const clinicalAdvisory = getClinicalAdvisory(prescription);
   const allergies = getAllergiesList(prescription);
   const pastIllnessText = getPastIllnessText(prescription);
   const familyHistoryText = getFamilyHistoryText(prescription);
+  const personalHistory = getPersonalHistoryLines(prescription);
+  const gynaecological = getGynaecologicalLines(prescription);
   const doctorLocation = getDoctorLocationLine(doctor);
 
   const sections: PdfTextSection[] = [];
 
-  if (concernText) {
-    pushSection(sections, 'Chief Complaint', [concernText]);
-  }
-
-  if (
-    diagnosisText &&
-    diagnosisText.toLowerCase() !== concernText.toLowerCase() &&
-    diagnosisText.toLowerCase() !== symptomText.toLowerCase()
-  ) {
-    pushSection(sections, 'Diagnosis', [diagnosisText]);
-  }
-
-  if (appointmentNotes) {
-    pushSection(sections, 'Notes', [appointmentNotes]);
-  }
-
-  if (followUp.hasContent) {
-    const followLines = [
-      followUp.dateLabel ? `Date: ${followUp.dateLabel}` : '',
-      followUp.reason ? `Reason: ${followUp.reason}` : '',
-      followUp.notes ? `Notes: ${followUp.notes}` : '',
-      followUp.status ? `Status: ${followUp.status}` : '',
-    ].filter(Boolean);
-    pushSection(sections, 'Follow-up', followLines);
-  }
-
-  if (symptomText) {
-    pushSection(sections, 'Symptoms', [symptomText]);
+  if (chiefComplaint) {
+    pushSection(sections, 'Chief Complaint', [chiefComplaint]);
   }
 
   if (allergies.length) {
@@ -286,6 +269,25 @@ export async function buildPrescriptionPdfFromData(
 
   if (familyHistoryText) {
     pushSection(sections, 'Family History', [familyHistoryText]);
+  }
+
+  if (personalHistory.length) {
+    pushSection(sections, 'Personal History', personalHistory);
+  }
+
+  if (gynaecological.length) {
+    pushSection(sections, 'Gynaecological History', gynaecological);
+  }
+
+  if (
+    diagnosisText &&
+    diagnosisText.toLowerCase() !== chiefComplaint.toLowerCase()
+  ) {
+    pushSection(sections, 'Diagnosis', [diagnosisText]);
+  }
+
+  if (appointmentNotes) {
+    pushSection(sections, 'Notes', [appointmentNotes]);
   }
 
   if (dietPlans.length) {
@@ -324,8 +326,14 @@ export async function buildPrescriptionPdfFromData(
     }
   }
 
-  if (clinicalAdvisory) {
-    pushSection(sections, 'Clinical Observations', [clinicalAdvisory]);
+  if (followUp.hasContent) {
+    const followLines = [
+      followUp.dateLabel ? `Date: ${followUp.dateLabel}` : '',
+      followUp.reason ? `Reason: ${followUp.reason}` : '',
+      followUp.notes ? `Notes: ${followUp.notes}` : '',
+      followUp.status ? `Status: ${followUp.status}` : '',
+    ].filter(Boolean);
+    pushSection(sections, 'Follow-up', followLines);
   }
 
   const physicianLines = [
@@ -338,14 +346,25 @@ export async function buildPrescriptionPdfFromData(
     doctor?.email ? `Email: ${doctor.email}` : '',
   ].filter(Boolean);
 
+  if (medicineTotalSum > 0) {
+    const discount = medicineMrpSum - medicineTotalSum;
+    pushSection(sections, 'Medicine Price Summary', [
+      `Total quantity: ${totalQty}`,
+      `Total MRP: ${formatRupee(medicineMrpSum, { decimals: 2 })}`,
+      discount > 0 ? `Discount: - ${formatRupee(discount, { decimals: 2 })}` : '',
+      `Total amount: ${formatRupee(medicineTotalSum, { decimals: 2 })}`,
+    ]);
+  }
+
   pushSection(sections, 'Prescribing Physician', physicianLines);
 
   const paymentMeta = buildPaymentMeta(data, appointment);
+  const paymentAmount = parseAmount(getPaymentAmount(data));
   const grandTotal =
     medicineTotalSum > 0
       ? money(medicineTotalSum)
-      : getPaymentAmount(data) != null
-        ? money(getPaymentAmount(data))
+      : paymentAmount != null
+        ? money(paymentAmount)
         : '-';
 
   const input: StructuredDocumentPdfInput = {
@@ -394,7 +413,9 @@ export async function buildPrescriptionPdfFromData(
           pick(
             appointment?.consultation_id,
             normalized.consultationId,
-            appointment?.id,
+            data?.consultation_id,
+            data?.consultation?.consultation_id,
+            appointment?.consultation?.consultation_id,
           ),
         ),
       },
@@ -406,7 +427,7 @@ export async function buildPrescriptionPdfFromData(
     ],
     lineItems,
     totals: [
-      { label: 'Qty', value: String(lineItems.length) },
+      { label: 'Qty', value: medicineRows.length ? String(totalQty) : '-' },
       { label: 'Rate', value: '-' },
       {
         label: 'Taxable',

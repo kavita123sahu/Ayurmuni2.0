@@ -75,6 +75,7 @@ const ProductsScreen = () => {
     categories: dashboardCategories,
     storeProducts,
     loading: homeLoading,
+    refreshHomeData,
   } = useHomeData();
   const productsCategoryId = useMemo(
     () => getServiceCategoryId(dashboardCategories, 'products'),
@@ -340,6 +341,7 @@ const ProductsScreen = () => {
             <RefreshControl
               refreshing={refreshing}
               onRefresh={() => {
+                void refreshHomeData();
                 refresh();
                 refreshOrders();
               }}

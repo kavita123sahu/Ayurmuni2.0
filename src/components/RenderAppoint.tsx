@@ -1,4 +1,4 @@
-import React, { memo, useMemo } from 'react';
+import React, { memo, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -14,12 +14,16 @@ import { Fonts } from '../common/Fonts';
 import AppointAction from './AppointAction';
 import TablerIcon from './TablerIcon';
 import DoctorAvatar from './DoctorAvatar';
-import {
+import { 
   buildAppointmentDetailsParams,
   buildVideoCallNavParams,
   canOfferCancel,
   canOfferReschedule,
+  formatAppointmentStatusLabel,
+  formatAppointmentTimeLabel,
+  getAppointmentActorLabel,
   resolveAppointmentDateTime,
+  resolveAppointmentStatus,
 } from '../utils/appointmentUtils';
 import { showSuccessToast } from '../config/Key';
 import { navigateToStackScreen } from '../navigation/navigationUtils';
@@ -29,15 +33,8 @@ import {
   getCompletedRefund,
 } from '../utils/paymentHistoryUtils';
 import { formatRupee } from '../utils/currencyUtils';
+import { useJoinWindow } from '../hooks/useJoinWindow';
 
-const formatStatusLabel = (status?: string) => {
-  if (status === 'cancellation_requested') return 'Confirmed';
-  const raw = String(status || '')
-    .replace(/_/g, ' ')
-    .trim();
-  if (!raw) return '';
-  return raw.charAt(0).toUpperCase() + raw.slice(1).toLowerCase();
-};
 
 const ScheduleRow = ({ item }: any) => (
   <View style={styles.scheduleRow}>
@@ -62,7 +59,9 @@ const ScheduleRow = ({ item }: any) => (
       <View style={styles.scheduleTextWrap}>
         <Text style={styles.scheduleLabel}>Time</Text>
         <Text style={styles.scheduleValue} numberOfLines={1}>
-          {item.time}
+          {item.timeRangeLabel ||
+            item.timeLabel ||
+            formatAppointmentTimeLabel(item.time)}
         </Text>
       </View>
     </View>
@@ -76,7 +75,8 @@ const RenderAppoint = ({
   isHorizontal = false,
   onCancel,
 }: any) => {
-  const statusStyle = useMemo(() => getStatusStyle(item?.status), [item]);
+  const status = resolveAppointmentStatus(item);
+  const statusStyle = useMemo(() => getStatusStyle(status), [status]);
 
   const therapies = Array.isArray(item?.rawData?.doctor?.health_diseases)
     ? item.rawData.doctor.health_diseases
@@ -89,16 +89,17 @@ const RenderAppoint = ({
     ? therapies.split(',').slice(0, 2).join(', ')
     : item?.specialty || 'Ayurvedic consultation';
 
-  const statusLabel = formatStatusLabel(item.status);
+  const statusLabel = formatAppointmentStatusLabel(status);
+  const actorLabel = getAppointmentActorLabel(item);
   const schedule = resolveAppointmentDateTime(item);
   const showRescheduleAction = canOfferReschedule(
-    item.status,
+    status,
     schedule.date,
     schedule.time,
     item,
   );
   const showCancelAction = canOfferCancel(
-    item.status,
+    status,
     schedule.date,
     schedule.time,
   );
@@ -125,12 +126,24 @@ const RenderAppoint = ({
       'expired',
       'no_show',
       'noshow',
-    ].includes(String(item.status || '').toLowerCase());
+    ].includes(String(status || '').toLowerCase());
   const refund = useMemo(
-    () => getCompletedRefund(item?.status, item?.rawData, item),
-    [item],
+    () => getCompletedRefund(status, item?.rawData, item),
+    [item, status],
   );
-  const showJoinCall = item.call_status === 'in_progress';
+  const canJoin = useJoinWindow(item);
+  const showJoinCall = canJoin;
+  useEffect(() => {
+    if (canJoin) {
+      console.log('APPOINTMENT_JOIN_VISIBLE =>', {
+        id: item?.appointment_id,
+        date: item?.date,
+        time: item?.time,
+        status: item?.status,
+        call: item?.call_status,
+      });
+    }
+  }, [canJoin, item]);
   const showActionRow =
     withinModifyWindow || showViewDetails || showJoinCall;
 
@@ -138,6 +151,21 @@ const RenderAppoint = ({
     navigation.navigate(
       'AppointmentDetails',
       buildAppointmentDetailsParams({ rawData: item.rawData, ...item }),
+    );
+  };
+
+  const openVideoCall = () => {
+    navigateToStackScreen(
+      navigation,
+      'PatientVideoCallScreen',
+      buildVideoCallNavParams(
+        { rawData: item.rawData, ...item },
+        {
+          role: 'patient',
+          otherPartyName: item?.doctorName,
+          otherPartyImage: item?.image,
+        },
+      ),
     );
   };
 
@@ -180,22 +208,33 @@ const RenderAppoint = ({
                   color={Colors.primaryColor}
                 />
                 <Text style={styles.hMetaText} numberOfLines={1}>
-                  {item.time}
+                  {item.timeLabel || formatAppointmentTimeLabel(item.time)}
                 </Text>
               </View>
             </View>
 
-            <View
-              style={[
-                styles.status,
-                styles.hStatus,
-                { backgroundColor: statusStyle.backgroundColor },
-              ]}
-            >
-              <Text style={[styles.statusText, { color: statusStyle.color }]}>
-                {statusLabel}
-              </Text>
-            </View>
+            {canJoin ? (
+              <TouchableOpacity
+                activeOpacity={0.85}
+                onPress={openVideoCall}
+                style={[styles.status, styles.hStatus, styles.hJoinChip]}
+              >
+                <View style={styles.hLiveDot} />
+                <Text style={[styles.statusText, styles.hJoinText]}>Join call</Text>
+              </TouchableOpacity>
+            ) : (
+              <View
+                style={[
+                  styles.status,
+                  styles.hStatus,
+                  { backgroundColor: statusStyle.backgroundColor },
+                ]}
+              >
+                <Text style={[styles.statusText, { color: statusStyle.color }]}>
+                  {statusLabel}
+                </Text>
+              </View>
+            )}
           </View>
         </View>
       </TouchableOpacity>
@@ -242,6 +281,11 @@ const RenderAppoint = ({
           <Text style={styles.vSpeciality} numberOfLines={1}>
             {therapyPreview}
           </Text>
+          {!!actorLabel ? (
+            <Text style={styles.actorLabel} numberOfLines={1}>
+              {actorLabel}
+            </Text>
+          ) : null}
 
           {item?.name ? (
             <View style={styles.patientRow}>
@@ -258,9 +302,20 @@ const RenderAppoint = ({
 
       {refund ? (
         <View style={styles.refundRow}>
-          <TablerIcon name="circle-check" size={14} color="#15803D" />
-          <Text style={styles.refundText} numberOfLines={1}>
-            Refunded {refund.amount != null ? formatRupee(refund.amount) : ''}
+          <TablerIcon
+            name={refund.pending ? 'clock' : 'circle-check'}
+            size={14}
+            color={refund.pending ? '#B45309' : '#15803D'}
+          />
+          <Text
+            style={[
+              styles.refundText,
+              refund.pending ? styles.refundPendingText : null,
+            ]}
+            numberOfLines={1}
+          >
+            {refund.label || 'Refunded'}
+            {refund.amount != null ? ` ${formatRupee(refund.amount)}` : ''}
             {refund.at ? ` · ${formatPaymentTimestamp(refund.at)}` : ''}
           </Text>
         </View>
@@ -278,16 +333,22 @@ const RenderAppoint = ({
       {showActionRow ? <View style={styles.actionDivider} /> : null}
 
       <AppointAction
-        status={item.status}
+        status={status}
         date={schedule.date}
         time={schedule.time}
         item={item}
         call_status={item.call_status}
+        canJoin={canJoin}
         hasPrescription={hasPrescription}
+        canRequestRefund={
+          ['missed', 'no_show', 'noshow', 'expired'].includes(
+            String(status || '').toLowerCase(),
+          ) && !refund
+        }
         onReschedule={onReschedule}
         onCancel={onCancel}
         onJoinCall={() => {
-          if (item.call_status !== 'in_progress') {
+          if (!canJoin) {
             showSuccessToast(
               'Video call is not active yet. Please wait for the doctor to start the consultation.',
               'error',
@@ -295,18 +356,7 @@ const RenderAppoint = ({
             return;
           }
 
-          navigateToStackScreen(
-            navigation,
-            'PatientVideoCallScreen',
-            buildVideoCallNavParams(
-              { rawData: item.rawData, ...item },
-              {
-                role: 'patient',
-                otherPartyName: item?.doctorName,
-                otherPartyImage: item?.image,
-              },
-            ),
-          );
+          openVideoCall();
         }}
         onViewDetails={() => {
           navigation.navigate('PrescriptionDetail', {
@@ -392,6 +442,14 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.PoppinsMedium,
     includeFontPadding: false,
   },
+  actorLabel: {
+    marginTop: 4,
+    fontSize: 11,
+    lineHeight: 15,
+    color: '#B45309',
+    fontFamily: Fonts.PoppinsMedium,
+    includeFontPadding: false,
+  },
   patientRow: {
     marginTop: 5,
     flexDirection: 'row',
@@ -429,6 +487,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
+  },
+  refundPendingText: {
+    color: '#B45309',
   },
   refundText: {
     flex: 1,
@@ -602,5 +663,20 @@ const styles = StyleSheet.create({
   hStatus: {
     alignSelf: 'flex-start',
     marginTop: 1,
+  },
+  hJoinChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: Colors.primaryColor,
+  },
+  hLiveDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#4ADE80',
+  },
+  hJoinText: {
+    color: '#FFFFFF',
   },
 });

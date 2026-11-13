@@ -10,6 +10,7 @@ import {
   BackHandler,
   Animated,
   Platform,
+  RefreshControl,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import LinearGradient from 'react-native-linear-gradient';
@@ -23,6 +24,10 @@ import BackIconButton from '../../components/BackIconButton';
 import TablerIcon, { TablerIconName } from '../../components/TablerIcon';
 import { PRAKRITI_IMAGES } from '../../common/DataInterface';
 import { requireAuth } from '../../services/guestAuth';
+import { bumpGlobalRefresh } from '../../utils/forceRefresh';
+import { useAppDispatch } from '../../store/hooks';
+import { fetchCustomerData } from '../../store/slices/homeSlice';
+import { Utils } from '../../common/Utils';
 
 type DoshaItem = {
   id: number;
@@ -256,22 +261,34 @@ const GuidelineCard = React.memo(
 
 const PrakritiProfile = (props: any) => {
   const insets = useSafeAreaInsets();
+  const dispatch = useAppDispatch();
   const fromAssessment = Boolean(props?.route?.params?.fromAssessment);
   const [analysisData, setAnalysisData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [hasPrakriti, setHasPrakriti] = useState(false);
+  const fetchGenRef = useRef(0);
 
-  const getPrakritiInfo = useCallback(async () => {
+  const getPrakritiInfo = useCallback(async (opts?: { silent?: boolean }) => {
+    const gen = ++fetchGenRef.current;
     try {
-      setLoading(true);
-      setHasPrakriti(false);
-      setAnalysisData(null);
+      if (!opts?.silent) {
+        setLoading(true);
+      }
+      // Clear local stale UI before network returns (retake / refresh)
+      if (!opts?.silent) {
+        setHasPrakriti(false);
+        setAnalysisData(null);
+      }
 
       let response: any = await _PROFILE_SERVICES.get_prakriti_info();
+      if (gen !== fetchGenRef.current) return;
 
       if (!hasValidPrakritiPayload(response) && fromAssessment) {
         await new Promise<void>(resolve => setTimeout(resolve, 700));
+        if (gen !== fetchGenRef.current) return;
         response = await _PROFILE_SERVICES.get_prakriti_info();
+        if (gen !== fetchGenRef.current) return;
       }
 
       if (!hasValidPrakritiPayload(response)) {
@@ -280,21 +297,47 @@ const PrakritiProfile = (props: any) => {
         return;
       }
 
-      setAnalysisData(formatPrakritiData(response.data));
+      const formatted = formatPrakritiData(response.data);
+      setAnalysisData(formatted);
       setHasPrakriti(true);
+      // Keep HomeHeader label in sync with the same result the profile shows
+      if (formatted?.dominantType) {
+        void Utils.storeData(
+          'PRAKRITI_RESULT_NAME',
+          String(formatted.dominantType),
+        );
+      }
     } catch (error) {
+      if (gen !== fetchGenRef.current) return;
       console.log('prakriti-error', error);
       setHasPrakriti(false);
       setAnalysisData(null);
     } finally {
-      setLoading(false);
+      if (gen === fetchGenRef.current) {
+        setLoading(false);
+      }
     }
   }, [fromAssessment]);
 
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      bumpGlobalRefresh();
+      await Promise.all([
+        getPrakritiInfo({ silent: true }),
+        dispatch(fetchCustomerData(true)),
+      ]);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [dispatch, getPrakritiInfo]);
+
   useFocusEffect(
     useCallback(() => {
+      bumpGlobalRefresh();
       getPrakritiInfo();
-    }, [getPrakritiInfo]),
+      dispatch(fetchCustomerData(true));
+    }, [dispatch, getPrakritiInfo]),
   );
 
   const handleGoHome = () => {
@@ -610,6 +653,14 @@ const PrakritiProfile = (props: any) => {
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={Colors.primaryColor}
+            colors={[Colors.primaryColor]}
+          />
+        }
       >
         {renderBody()}
       </ScrollView>

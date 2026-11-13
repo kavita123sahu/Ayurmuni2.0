@@ -129,16 +129,15 @@ const MedicineScreen = (props: any) => {
           onPress: () => {
             if (!mapped.id) return;
             navigateToCategoryProducts(navigation, {
-              categoryMode: 'product',
+              categoryMode: 'both',
               brandOnly: true,
               brand_name_id: mapped.id,
               brandId: mapped.id,
-              serviceCategoryId: medicineCategoryId || undefined,
             });
           },
         };
       }),
-    [brands, navigation, medicineCategoryId],
+    [brands, navigation],
   );
 
   const handleSearchPress = useCallback(() => {
@@ -151,6 +150,8 @@ const MedicineScreen = (props: any) => {
   }, [navigation]);
 
   const onRefresh = useCallback(async () => {
+    const { bumpGlobalRefresh } = await import('../../utils/forceRefresh');
+    bumpGlobalRefresh();
     await Promise.all([
       refreshHomeData(),
       refresh(),
@@ -285,8 +286,6 @@ const MedicineScreen = (props: any) => {
           </View>
         ) : null}
 
-        {/* <ActionCards data={actionItems} onpress={handleActionPress} /> */}
-
         {(ordersLoading || recentProducts.length > 0) && (
           <>
             <SectionHeader
@@ -322,7 +321,6 @@ const MedicineScreen = (props: any) => {
                 })
               } />
 
-
             <CategoryList
               data={safeHealthConcerns}
               navigation={navigation}
@@ -335,7 +333,16 @@ const MedicineScreen = (props: any) => {
 
         {brandListData.length > 0 ? (
           <>
-            <SectionHeader title="Trusted Brands" />
+            <SectionHeader
+              title="Trusted Brands"
+              actionText="View All"
+              onPress={() =>
+                navigateToCategoryProducts(navigation, {
+                  categoryMode: 'both',
+                  categoryName: 'Trusted Brands',
+                })
+              }
+            />
             <BrandList data={brandListData} />
           </>
         ) : null}

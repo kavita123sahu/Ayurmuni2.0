@@ -294,10 +294,10 @@ const ShareExperienceScreen = ({ route, navigation }: any) => {
         response?.message || 'Unable to submit review',
         'error',
       );
-    } catch (error) {
+    } catch (error: any) {
       console.log('Review submit error:', error);
       showSuccessToast(
-        'Something went wrong while submitting',
+        error?.message || 'Something went wrong while submitting',
         'error',
       );
     } finally {

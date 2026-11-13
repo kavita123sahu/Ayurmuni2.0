@@ -42,7 +42,12 @@ const InputCard = memo(({
           <Image source={icon} style={styles.basicIcon} />
         </View>
         <View style={{ flex: 1 }}>
-          <Text style={styles.label}>{label}</Text>
+          <Text style={styles.label}>
+            {String(label || '').replace(/\s*\*\s*$/, '').trim()}
+            {/\*\s*$/.test(String(label || '')) ? (
+              <Text style={fieldStyles.requiredMark}> *</Text>
+            ) : null}
+          </Text>
           <TextInput
             blurOnSubmit={false}
             placeholder={placeholder}
@@ -51,6 +56,9 @@ const InputCard = memo(({
             value={value}
             onChangeText={onChangeText}
             style={styles.singleInput}
+            autoComplete="off"
+            textContentType="none"
+            importantForAutofill="no"
           />
         </View>
         <Text style={styles.unitText}>{unit}</Text>
@@ -180,5 +188,9 @@ const fieldStyles = StyleSheet.create({
     fontSize: 12,
     color: '#B91C1C',
     fontFamily: Fonts.PoppinsMedium,
+  },
+  requiredMark: {
+    color: '#EF4444',
+    fontFamily: Fonts.PoppinsSemiBold,
   },
 });

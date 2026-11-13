@@ -2,7 +2,6 @@ import { Utils } from "../common/Utils";
 import { BaseUrl } from "../config/Key";
 import * as _AUTH_SERVICES from "./AuthService";
 
-
 let isRefreshing = false;
 
 let refreshPromise: Promise<string | null> | null =
@@ -13,7 +12,6 @@ let refreshPromise: Promise<string | null> | null =
 | CLEAR SESSION
 |--------------------------------------------------------------------------
 */
-
 
 /*
 |--------------------------------------------------------------------------
@@ -26,11 +24,6 @@ const refreshAccessToken = async (): Promise<string | null> => {
         const refreshToken =
             await Utils.getData('_REFRESH_TOKEN');
 
-        console.log(
-            'REFRESHING TOKEN WITH =>',
-            refreshToken,
-        );
-
         if (!refreshToken) {
             return null;
         }
@@ -38,11 +31,6 @@ const refreshAccessToken = async (): Promise<string | null> => {
         const payload = {
             refresh: refreshToken,
         };
-
-        console.log(
-            'REFRESH PAYLOAD =>',
-            payload,
-        );
 
         const response = await fetch(
             `${BaseUrl.base_url}user/token/refresh/`,
@@ -60,19 +48,6 @@ const refreshAccessToken = async (): Promise<string | null> => {
             },
         );
 
-        console.log(
-            'REFRESH STATUS =>',
-            response.status,
-        );
-
-        const responseText =
-            await response.clone().text();
-
-        console.log(
-            'REFRESH RAW RESPONSE =>',
-            responseText,
-        );
-
         let data = null;
 
         try {
@@ -85,20 +60,9 @@ const refreshAccessToken = async (): Promise<string | null> => {
             );
         }
 
-        console.log(
-            'TOKEN_REFRESH_RESPONSE =>',
-            data,
-        );
-
-
         // Backend sometimes returns 401 "User not found" on refresh —
         // do not treat that as a successful rotation; keep existing access token.
         if (!response.ok || !data?.success) {
-            console.log(
-                'TOKEN REFRESH FAILED =>',
-                response.status,
-                data?.message || responseText,
-            );
             return null;
         }
 
@@ -110,8 +74,6 @@ const refreshAccessToken = async (): Promise<string | null> => {
 
         const accessToken = data?.data?.access;
         const newRefreshToken = data?.data?.refresh;
-
-        console.log('accessTokenaccessTokenaccessToken',accessToken)
 
         if (!accessToken) {
             return null;
@@ -125,11 +87,6 @@ const refreshAccessToken = async (): Promise<string | null> => {
                 newRefreshToken,
             );
         }
-
-        console.log(
-            'NEW TOKEN SAVED =>',
-            accessToken,
-        );
 
         return accessToken;
     } catch (error) {
@@ -159,7 +116,6 @@ const getFreshToken = async () => {
     isRefreshing = true;
 
     refreshPromise = refreshAccessToken();
-    console.log("resfrsporimisee", refreshPromise);
 
     try {
         return await refreshPromise;
@@ -207,8 +163,7 @@ const makeRequest = async (
     );
 };
 
-
-export const apiClient = async (
+const performApiRequest = async (
     endpoint: string,
     options: RequestInit = {},
     requireAuth: boolean = true,
@@ -221,14 +176,6 @@ export const apiClient = async (
             token = await Utils.getData('_TOKEN');
         }
 
-        console.log("requireAuthrequireAuth", requireAuth)
-        console.log(
-            'API REQUEST =>',
-            endpoint,
-            token,
-            options,
-        );
-
         let response = await makeRequest(
             endpoint,
             options,
@@ -237,7 +184,6 @@ export const apiClient = async (
 
         // Refresh only on 401 — 403 is often "not allowed for this resource", not expired token.
         if (requireAuth && response.status === 401) {
-            console.log('TOKEN EXPIRED => REFRESHING');
             const freshToken =
                 await getFreshToken();
 
@@ -255,11 +201,6 @@ export const apiClient = async (
                 endpoint,
                 options,
                 freshToken,
-            );
-
-            console.log(
-                'RETRY STATUS =>',
-                response.status,
             );
         }
 
@@ -283,10 +224,20 @@ export const apiClient = async (
             };
         }
 
+        const payload =
+            data && typeof data === 'object' && !Array.isArray(data)
+                ? data
+                : {};
         return {
-            success: true,
+            ...payload,
+            // Do not let an absent body `success` wipe the HTTP OK signal;
+            // only honor an explicit success:false from the API body.
+            success: payload.success === false ? false : true,
             status: response.status,
-            ...(data || {}),
+            ...(data != null &&
+            (Array.isArray(data) || typeof data !== 'object')
+                ? { data }
+                : {}),
         };
     }
 
@@ -298,4 +249,35 @@ export const apiClient = async (
                 'Network Error',
         };
     }
+};
+
+/**
+ * Identical GETs started together share one network call.
+ * The slot is dropped as soon as that call finishes — nothing is stored.
+ */
+const inflightGets = new Map<string, Promise<any>>();
+
+export const apiClient = (
+    endpoint: string,
+    options: RequestInit = {},
+    requireAuth: boolean = true,
+) => {
+    const method = String(options.method || 'GET').toUpperCase();
+    const canJoin = method === 'GET' && options.body == null;
+    const key = canJoin ? `${requireAuth ? '1' : '0'}:${endpoint}` : '';
+    if (key) {
+        const pending = inflightGets.get(key);
+        if (pending) return pending;
+    }
+
+    const run = performApiRequest(endpoint, options, requireAuth);
+    if (key) {
+        inflightGets.set(key, run);
+        void run.finally(() => {
+            if (inflightGets.get(key) === run) {
+                inflightGets.delete(key);
+            }
+        });
+    }
+    return run;
 };

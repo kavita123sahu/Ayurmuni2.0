@@ -453,7 +453,8 @@ const AddEditAddress = ({ navigation, route }: any) => {
                     {/* ADDRESS LINE 1 */}
 
                     <Text style={styles.label}>
-                        Address Line 1 *
+                        Address Line 1
+                        <Text style={styles.requiredMark}> *</Text>
                     </Text>
 
                     <TextInput
@@ -467,7 +468,8 @@ const AddEditAddress = ({ navigation, route }: any) => {
                     {/* ADDRESS LINE 2 */}
 
                     <Text style={styles.label}>
-                        Address Line 2 *
+                        Address Line 2
+                        <Text style={styles.requiredMark}> *</Text>
                     </Text>
 
                     <TextInput
@@ -485,7 +487,8 @@ const AddEditAddress = ({ navigation, route }: any) => {
                         <View style={styles.flex}>
 
                             <Text style={styles.label}>
-                                City *
+                                City
+                                <Text style={styles.requiredMark}> *</Text>
                             </Text>
 
                             <TextInput
@@ -507,7 +510,8 @@ const AddEditAddress = ({ navigation, route }: any) => {
                         <View style={styles.flex}>
 
                             <Text style={styles.label}>
-                                Zip Code *
+                                Zip Code
+                                <Text style={styles.requiredMark}> *</Text>
                             </Text>
 
                             <TextInput
@@ -545,7 +549,8 @@ const AddEditAddress = ({ navigation, route }: any) => {
                     {/* STATE */}
 
                     <Text style={styles.label}>
-                        State *
+                        State
+                        <Text style={styles.requiredMark}> *</Text>
                     </Text>
 
                     <TextInput
@@ -700,6 +705,11 @@ const styles = StyleSheet.create({
 
         color: '#111827',
 
+        fontFamily: Fonts.PoppinsSemiBold,
+    },
+
+    requiredMark: {
+        color: '#EF4444',
         fontFamily: Fonts.PoppinsSemiBold,
     },
 

@@ -129,34 +129,125 @@ export const normalizePrescriptionPayload = (raw: any) => {
   };
 };
 
+const medicineSequence = (item: any, index: number) => {
+  const raw =
+    item?.sequence ??
+    item?.sort_order ??
+    item?.display_order ??
+    item?.order ??
+    item?.position ??
+    item?.serial_no ??
+    item?.sr_no;
+  const num = Number(raw);
+  return Number.isFinite(num) ? num : index;
+};
+
 export const getMedicineItems = (prescription: any): any[] => {
   if (!prescription) return [];
-  if (Array.isArray(prescription.items)) return prescription.items;
-  if (Array.isArray(prescription.medicines)) return prescription.medicines;
-  if (Array.isArray(prescription.medicine_items)) {
-    return prescription.medicine_items;
+  const list = Array.isArray(prescription.items)
+    ? prescription.items
+    : Array.isArray(prescription.medicines)
+      ? prescription.medicines
+      : Array.isArray(prescription.medicine_items)
+        ? prescription.medicine_items
+        : Array.isArray(prescription.prescribed_medicines)
+          ? prescription.prescribed_medicines
+          : [];
+  return list
+    .map((item: any, index: number) => ({ item, index }))
+    .sort((a, b) => {
+      const diff = medicineSequence(a.item, a.index) - medicineSequence(b.item, b.index);
+      return diff !== 0 ? diff : a.index - b.index;
+    })
+    .map(row => row.item);
+};
+
+/** "₹1,299.00" / "199" / 199 → number; empty / invalid → null. */
+export const parseAmount = (value: any): number | null => {
+  if (value == null || typeof value === 'boolean') return null;
+  if (typeof value === 'number') return Number.isFinite(value) ? value : null;
+  const cleaned = String(value).replace(/[^0-9.-]/g, '');
+  if (!cleaned) return null;
+  const num = Number(cleaned);
+  return Number.isFinite(num) ? num : null;
+};
+
+const NESTED_PRICE_KEYS = ['variant', 'product_variant', 'product', 'medicine', 'inventory', 'pricing'];
+const SELLING_KEYS = [
+  'selling_price',
+  'sale_price',
+  'discounted_price',
+  'special_price',
+  'final_price',
+  'price',
+  'unit_price',
+  'amount',
+];
+const MRP_KEYS = ['mrp', 'mrp_price', 'max_retail_price', 'original_price', 'list_price'];
+
+const findAmount = (medicine: any, keys: string[]): number | null => {
+  if (!medicine || typeof medicine !== 'object') return null;
+  const sources = [
+    medicine,
+    ...NESTED_PRICE_KEYS.map(key => medicine[key]).filter(v => v && typeof v === 'object'),
+  ];
+  for (const source of sources) {
+    for (const key of keys) {
+      const num = parseAmount(source[key]);
+      if (num != null && num > 0) return num;
+    }
   }
-  if (Array.isArray(prescription.prescribed_medicines)) {
-    return prescription.prescribed_medicines;
-  }
-  return [];
+  return null;
+};
+
+/** Unit MRP of a prescribed medicine (flat or nested product / variant keys). */
+export const getMedicineMrp = (medicine: any): number | null => findAmount(medicine, MRP_KEYS);
+
+/** Unit selling price; falls back to MRP when no selling price is sent. */
+export const getMedicineUnitPrice = (medicine: any): number | null =>
+  findAmount(medicine, SELLING_KEYS) ?? getMedicineMrp(medicine);
+
+/** "10 tablets" / "2" / 2 → 2; missing → 1. */
+export const getMedicineQuantity = (medicine: any): number => {
+  const raw = medicine?.quantity ?? medicine?.qty;
+  const match = String(raw ?? '').match(/\d+(\.\d+)?/);
+  const num = match ? Number(match[0]) : NaN;
+  return Number.isFinite(num) && num > 0 ? num : 1;
 };
 
 /** Prefer selling / unit / mrp style fields from medicine item. */
-export const getMedicinePrice = (medicine: any): string | number | null => {
-  if (!medicine || typeof medicine !== 'object') return null;
-  const candidates = [
-    medicine.selling_price,
-    medicine.price,
-    medicine.mrp,
-    medicine.amount,
-    medicine.unit_price,
-    medicine.total_price,
-  ];
-  for (const c of candidates) {
-    if (c != null && String(c).trim() !== '') return c;
-  }
-  return null;
+export const getMedicinePrice = (medicine: any): string | number | null =>
+  getMedicineUnitPrice(medicine);
+
+const medicineKey = (medicine: any) =>
+  String(
+    medicine?.id ??
+      medicine?.medicine_id ??
+      medicine?.product_id ??
+      medicine?.variant_id ??
+      medicine?.medicine_name ??
+      medicine?.name ??
+      '',
+  )
+    .trim()
+    .toLowerCase();
+
+const withoutEmpty = (obj: any) =>
+  Object.fromEntries(
+    Object.entries(obj ?? {}).filter(
+      ([, v]) => v != null && !(typeof v === 'string' && v.trim() === ''),
+    ),
+  );
+
+/** Download items win, but missing fields (price, mrp…) are filled from the screen items. */
+export const mergeMedicineItems = (primary: any[], fallback: any[]): any[] => {
+  if (!primary.length) return fallback;
+  if (!fallback.length) return primary;
+  const byKey = new Map(fallback.map(item => [medicineKey(item), item]));
+  return primary.map((item, index) => {
+    const match = byKey.get(medicineKey(item)) ?? fallback[index] ?? {};
+    return { ...match, ...withoutEmpty(item) };
+  });
 };
 
 const isBareNumber = (value: string) => /^\d+(\.\d+)?$/.test(value.trim());
@@ -240,13 +331,17 @@ export const getMedicineScheduleChips = (
     chips.push({ key: 'dur', caption: 'Duration', label: duration });
   }
 
-  if (medicine.quantity != null && String(medicine.quantity).trim() !== '') {
-    chips.push({
-      key: 'qty',
-      caption: 'Qty',
-      label: String(medicine.quantity),
-    });
-  }
+  const qtyRaw =
+    medicine.quantity ?? medicine.qty ?? medicine.Quantity ?? medicine.Qty;
+  const qtyLabel =
+    qtyRaw != null && String(qtyRaw).trim() !== ''
+      ? String(qtyRaw).trim()
+      : String(getMedicineQuantity(medicine));
+  chips.push({
+    key: 'qty',
+    caption: 'Quantity',
+    label: qtyLabel,
+  });
 
   return chips;
 };
@@ -275,11 +370,17 @@ export const getPaymentAmount = (payload: any): string | number | null => {
     payload?.consultation?.payment ||
     null;
   if (!payment) return null;
+  const summary =
+    payment?.summary && typeof payment.summary === 'object'
+      ? payment.summary
+      : null;
   return (
-    payment.consultation_fee ??
+    summary?.total_payable_amount ??
     payment.amount ??
     payment.total_amount ??
     payment.paid_amount ??
+    summary?.consultation_fee ??
+    payment.consultation_fee ??
     null
   );
 };
@@ -396,9 +497,14 @@ export const getAllergiesList = (prescription: any): string[] => {
 export const getPastIllnessText = (prescription: any): string =>
   getClinicalText(
     prescription?.history_of_past_illness ||
+      prescription?.history_of_past_illnesses ||
       prescription?.past_illness ||
+      prescription?.past_illness_history ||
       prescription?.past_medical_history ||
-      prescription?.medical_history,
+      prescription?.medical_history ||
+      prescription?.hopi ||
+      prescription?.clinical_findings?.history_of_past_illness ||
+      prescription?.clinical_findings?.past_illness,
   );
 
 export const getFamilyHistoryText = (prescription: any): string =>
@@ -408,12 +514,57 @@ export const getFamilyHistoryText = (prescription: any): string =>
       prescription?.hereditary_history,
   );
 
+const humanizeKey = (key: string) =>
+  key
+    .replace(/[_-]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .replace(/^\w/, c => c.toUpperCase());
+
+const isEmptyValue = (value: any) =>
+  value == null ||
+  (typeof value === 'string' && value.trim() === '') ||
+  (Array.isArray(value) && value.length === 0);
+
+/** String / array / `{ key: value }` history payload → readable lines ("Diet: Veg"). */
+export const getHistoryLines = (value: any): string[] => {
+  if (isEmptyValue(value)) return [];
+  if (typeof value === 'string' || typeof value === 'number') {
+    return [String(value).trim()].filter(Boolean);
+  }
+  if (typeof value === 'boolean') return [value ? 'Yes' : 'No'];
+  if (Array.isArray(value)) {
+    return value.flatMap(item => getHistoryLines(item));
+  }
+  if (typeof value === 'object') {
+    return Object.entries(value).flatMap(([key, inner]) => {
+      if (isEmptyValue(inner)) return [];
+      const text = getHistoryLines(inner).join(', ');
+      return text ? [`${humanizeKey(key)}: ${text}`] : [];
+    });
+  }
+  return [];
+};
+
+export const getPersonalHistoryLines = (prescription: any): string[] =>
+  getHistoryLines(prescription?.personal_history);
+
+export const getGynaecologicalLines = (prescription: any): string[] =>
+  getHistoryLines(
+    prescription?.gynaecological ??
+      prescription?.gynaecological_history ??
+      prescription?.gynecological ??
+      prescription?.gynecological_history,
+  );
+
 export const getSymptomDescription = (prescription: any): string =>
   getClinicalText(
     prescription?.symptom_description ||
       prescription?.symptoms ||
       prescription?.chief_complaint ||
-      prescription?.presenting_complaint,
+      prescription?.presenting_complaint ||
+      prescription?.clinical_findings?.chief_complaint ||
+      prescription?.clinical_findings?.symptom_description,
   );
 
 export type FollowUpInfo = {
@@ -430,20 +581,48 @@ export const getFollowUpInfo = (
   prescription: any,
   appointment?: any,
 ): FollowUpInfo => {
-  const followUp =
-    (prescription?.follow_up && typeof prescription.follow_up === 'object'
+  // Prefer prescription follow_up — appointment copy can be stale after doctor clears it
+  const rxFollowUp =
+    prescription?.follow_up && typeof prescription.follow_up === 'object'
       ? prescription.follow_up
-      : null) ||
-    (appointment?.follow_up && typeof appointment.follow_up === 'object'
+      : null;
+  const apptFollowUp =
+    appointment?.follow_up && typeof appointment.follow_up === 'object'
       ? appointment.follow_up
-      : null) ||
-    null;
+      : null;
+  const followUp = rxFollowUp || apptFollowUp || null;
 
-  const dateRaw =
-    followUp?.date ||
-    followUp?.follow_up_date ||
-    appointment?.follow_up_date ||
-    null;
+  const explicitlyOff =
+    followUp?.schedule === false ||
+    followUp?.scheduled === false ||
+    followUp?.follow_up_active === false ||
+    followUp?.active === false ||
+    String(followUp?.status || '')
+      .toLowerCase()
+      .includes('cancel') ||
+    String(followUp?.status || '')
+      .toLowerCase()
+      .includes('removed');
+
+  if (explicitlyOff) {
+    return {
+      date: null,
+      dateLabel: null,
+      reason: null,
+      schedule: false,
+      notes: null,
+      status: null,
+      hasContent: false,
+    };
+  }
+
+  // If prescription has a follow_up object, do not fall back to appointment.follow_up_date
+  const dateRaw = rxFollowUp
+    ? rxFollowUp?.date || rxFollowUp?.follow_up_date || null
+    : followUp?.date ||
+      followUp?.follow_up_date ||
+      appointment?.follow_up_date ||
+      null;
   const date = dateRaw ? String(dateRaw).trim() : null;
   const reason = getClinicalText(
     followUp?.reason || followUp?.note || followUp?.notes || followUp?.purpose,
@@ -452,6 +631,22 @@ export const getFollowUpInfo = (
     followUp?.instructions || followUp?.advice || followUp?.description,
   );
   const status = getClinicalText(followUp?.status || followUp?.appointment_status);
+  // Doctor cleared date/reason but left schedule true — treat as removed
+  const fieldsCleared =
+    Boolean(rxFollowUp) && !date && !reason && !notes && !status;
+
+  if (fieldsCleared) {
+    return {
+      date: null,
+      dateLabel: null,
+      reason: null,
+      schedule: false,
+      notes: null,
+      status: null,
+      hasContent: false,
+    };
+  }
+
   const schedule = Boolean(
     followUp?.schedule ?? followUp?.scheduled ?? (date || reason || notes),
   );
@@ -463,7 +658,7 @@ export const getFollowUpInfo = (
     schedule,
     notes: notes || null,
     status: status || null,
-    hasContent: Boolean(date || reason || notes || status || followUp?.schedule),
+    hasContent: Boolean(date || reason || notes || status || schedule),
   };
 };
 
@@ -507,7 +702,21 @@ const medicineLine = (medicine: any, index: number): string => {
   const notes = String(
     medicine?.instructions || medicine?.notes || medicine?.advice || '',
   ).trim();
-  return [`  ${index + 1}. ${name}`, chips ? `     ${chips}` : '', notes ? `     Notes: ${notes}` : '']
+  const unit = getMedicineUnitPrice(medicine);
+  const mrp = getMedicineMrp(medicine);
+  const qty = getMedicineQuantity(medicine);
+  const priceLine =
+    unit != null
+      ? `     Price: Rs ${unit.toFixed(2)} x ${qty} = Rs ${(unit * qty).toFixed(2)}${
+          mrp != null && mrp > unit ? ` (MRP Rs ${mrp.toFixed(2)})` : ''
+        }`
+      : '';
+  return [
+    `  ${index + 1}. ${name}`,
+    chips ? `     ${chips}` : '',
+    priceLine,
+    notes ? `     Notes: ${notes}` : '',
+  ]
     .filter(Boolean)
     .join('\n');
 };
@@ -560,6 +769,8 @@ export const buildPrescriptionDownloadText = (data: any): string => {
   const symptoms = getSymptomDescription(prescription);
   const pastIllness = getPastIllnessText(prescription);
   const familyHistory = getFamilyHistoryText(prescription);
+  const personalHistory = getPersonalHistoryLines(prescription);
+  const gynaecological = getGynaecologicalLines(prescription);
   const clinical = getClinicalAdvisory(prescription);
   const diagnosis = getDiagnosisText(prescription);
 
@@ -591,6 +802,8 @@ export const buildPrescriptionDownloadText = (data: any): string => {
   if (familyHistory) {
     sections.push('Family history', `  ${familyHistory}`, '');
   }
+  sections.push(...lineList('Personal history', personalHistory));
+  sections.push(...lineList('Gynaecological history', gynaecological));
   if (clinical) {
     sections.push('Clinical notes', `  ${clinical}`, '');
   }
@@ -598,6 +811,11 @@ export const buildPrescriptionDownloadText = (data: any): string => {
   if (medicines.length) {
     sections.push('Medicines');
     medicines.forEach((med, i) => sections.push(medicineLine(med, i)));
+    const total = medicines.reduce((sum, med) => {
+      const unit = getMedicineUnitPrice(med);
+      return unit != null ? sum + unit * getMedicineQuantity(med) : sum;
+    }, 0);
+    if (total > 0) sections.push(`  Total amount: Rs ${total.toFixed(2)}`);
     sections.push('');
   }
 

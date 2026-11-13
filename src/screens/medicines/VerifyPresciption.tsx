@@ -12,6 +12,8 @@ import {
   ActivityIndicator,
   Switch,
   BackHandler,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -50,7 +52,6 @@ const VerifyPresciption = (props: any) => {
     existingRequest,
     previewItems: routePreviewItems,
   } = props.route?.params || {};
-
 
   console.log("variantIdsvariantIdsvariantIds", routeVariantIds, routePreviewItems, existingRequest, routeRequestId);
   const [notes, setNotes] = useState(
@@ -117,38 +118,35 @@ const VerifyPresciption = (props: any) => {
     return fromRoute.length ? fromRoute : fromRequest;
   }, [request, routePreviewItems]);
 
+  const fromOrderHistory = Boolean(
+    props.route?.params?.fromOrderHistory ||
+      props.route?.params?.existingRequest,
+  );
+
   const goHome = useCallback(() => {
     resetRootToHomeStack(props.navigation, 'TabStack', { screen: 'Home' });
   }, [props.navigation]);
 
+  /** Stack back when opened from Order History; home only after a fresh cart submit. */
   const handleBack = useCallback(() => {
-    if (pending) {
+    if (props.navigation.canGoBack()) {
+      props.navigation.goBack();
+      return;
+    }
+    if (pending && !fromOrderHistory) {
       goHome();
       return;
     }
-    props.navigation.goBack();
-  }, [pending, goHome, props.navigation]);
+    goHome();
+  }, [pending, fromOrderHistory, goHome, props.navigation]);
 
   useEffect(() => {
-    if (!pending) return;
     const sub = BackHandler.addEventListener('hardwareBackPress', () => {
-      goHome();
+      handleBack();
       return true;
     });
     return () => sub.remove();
-  }, [pending, goHome]);
-
-  useEffect(() => {
-    if (!pending) return;
-    const unsub = props.navigation?.addListener?.('beforeRemove', (e: any) => {
-      // Intercept stack back / gesture while pending → home
-      if (e?.data?.action?.type === 'GO_BACK' || e?.data?.action?.type === 'POP') {
-        e.preventDefault();
-        goHome();
-      }
-    });
-    return unsub;
-  }, [pending, goHome, props.navigation]);
+  }, [handleBack]);
 
   useEffect(() => {
     if (!(pending || submitting)) {
@@ -295,15 +293,21 @@ const VerifyPresciption = (props: any) => {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
       <AppHeader
         title="Verify Prescription"
         onLeftPress={handleBack}
       />
 
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 8 : 24}
+      >
       <ScrollView
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
         contentContainerStyle={[
           styles.scrollContent,
           { paddingBottom: insets.bottom + 88 },
@@ -461,7 +465,6 @@ const VerifyPresciption = (props: any) => {
               />
             </View>
 
-            
           </>
         ) : notes || request?.notes ? (
           <View style={styles.notesCard}>
@@ -514,7 +517,9 @@ const VerifyPresciption = (props: any) => {
         ) : null}
       </ScrollView>
 
-      <TouchableOpacity
+    
+      </KeyboardAvoidingView>
+        <TouchableOpacity
         style={[styles.ctaWrap, { bottom: insets.bottom + 12 }]}
         onPress={
           !requestId

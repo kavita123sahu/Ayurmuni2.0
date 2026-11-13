@@ -12,7 +12,6 @@ export function useBrands() {
       setError(null);
 
       const response = await _MEDICINE_SERVICES.getBrands();
-      console.log("brandataaaaaaaaaaaaa", response);
       const list = Array.isArray(response?.data)
         ? response.data
         : Array.isArray(response)

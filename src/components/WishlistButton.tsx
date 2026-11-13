@@ -2,14 +2,16 @@ import React, { useRef } from 'react';
 import { TouchableOpacity, Animated, StyleSheet } from 'react-native';
 import TablerIcon from './TablerIcon';
 import { Colors } from '../common/Colors';
+import { readWishlistFlag } from '../hooks/useWishlistSync';
 
 interface WishlistButtonProps {
-  isWishlisted: boolean;
+  isWishlisted?: unknown;
   onPress: () => void;
 }
 
 const WishlistButton = ({ isWishlisted, onPress }: WishlistButtonProps) => {
   const scale = useRef(new Animated.Value(1)).current;
+  const filled = readWishlistFlag(isWishlisted);
 
   const handlePress = () => {
     Animated.sequence([
@@ -34,9 +36,9 @@ const WishlistButton = ({ isWishlisted, onPress }: WishlistButtonProps) => {
     >
       <Animated.View style={[styles.iconWrapper, { transform: [{ scale }] }]}>
         <TablerIcon
-          name={isWishlisted ? 'heart-filled' : 'heart'}
+          name={filled ? 'heart-filled' : 'heart'}
           size={15}
-          color={isWishlisted ? Colors.primaryColor : '#94A3B8'}
+          color={filled ? Colors.primaryColor : '#94A3B8'}
           strokeWidth={2}
         />
       </Animated.View>

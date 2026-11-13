@@ -702,27 +702,31 @@ const styles = StyleSheet.create({
     },
 
     filterBlock: {
-        marginTop: 10,
-        marginBottom: 4,
+        marginTop: 6,
+        marginBottom: 2,
     },
     filterTitle: {
         fontSize: 12,
         fontFamily: Fonts.PoppinsSemiBold,
         color: '#64748B',
-        marginBottom: 8,
+        marginBottom: 6,
         marginLeft: 2,
     },
     filterRow: {
         gap: 6,
         paddingRight: 8,
+        alignItems: 'center',
+        minHeight: 36,
     },
     filterBtn: {
-        paddingVertical: 6,
-        paddingHorizontal: 12,
-        borderRadius: 8,
+        paddingVertical: 8,
+        paddingHorizontal: 15,
+        borderRadius: 10,
         backgroundColor: '#FFFFFF',
         borderWidth: 1,
         borderColor: '#E2E8F0',
+        height: 36,
+        justifyContent: 'center',
     },
     activeFilterBtn: {
         backgroundColor: Colors.primaryColor,

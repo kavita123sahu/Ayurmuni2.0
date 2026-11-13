@@ -12,11 +12,11 @@ import Animated, {
   useAnimatedStyle,
   useSharedValue,
 } from 'react-native-reanimated';
+import { useFocusEffect } from '@react-navigation/native';
 import { Fonts } from '../../common/Fonts';
 import { Colors } from '../../common/Colors';
 import TablerIcon, { TablerIconName } from '../../components/TablerIcon';
 import { HORIZONTAL_SCROLL_CONTENT, SCREEN_PADDING_H } from '../../constants/layout';
-import { navigateToCategoryProducts } from '../../navigation/productNavigation';
 import { resolveServiceCategoryKey } from '../../utils/serviceCategoryUtils';
 
 const SCREEN_W = Dimensions.get('window').width;
@@ -79,8 +79,6 @@ const ALL_ITEM: Category = {
   image_url: '',
   redirect_url: '',
 };
-
-
 
 const resolveCategoryIcon = (item: Category): TablerIconName => {
   if (item.id === 'all') return CATEGORY_ICONS.all;
@@ -156,20 +154,21 @@ type Props = {
 const HomeCategory = ({ data = [], navigation, sticky = false }: Props) => {
   const [activeId, setActiveId] = useState('all');
 
+  useFocusEffect(
+    useCallback(() => {
+      setActiveId('all');
+    }, []),
+  );
+
   const services = useMemo(
     () => (Array.isArray(data) ? data.filter(Boolean) : []),
     [data],
   );
 
-  console.log("servicesservicesservices", services)
   const listData = useMemo(() => [ALL_ITEM, ...services], [services]);
 
-  // const listData = useMemo(() => [...services], [services]);
-
   const handlePress = useCallback(
-
     (item: Category) => {
-      console.log("itessssssssssssss", item)
       setActiveId(item.id);
 
       const redirectUrl = item?.redirect_url?.trim();
@@ -191,7 +190,6 @@ const HomeCategory = ({ data = [], navigation, sticky = false }: Props) => {
     },
     [navigation],
   );
-
 
   const renderItem = useCallback(
     ({ item }: { item: Category }) => (
@@ -245,12 +243,14 @@ const styles = StyleSheet.create({
   container: {
     ...HORIZONTAL_SCROLL_CONTENT,
     paddingLeft: SCREEN_PADDING_H,
-    paddingVertical: 0,
+    paddingVertical: 6,
   },
   item: {
     width: ITEM_WIDTH - 16,
     alignItems: 'center',
     marginRight: ITEM_GAP,
+    paddingHorizontal: 2,
+    paddingBottom: 2,
   },
   tile: {
     width: TILE_W - 6,
@@ -266,15 +266,17 @@ const styles = StyleSheet.create({
     opacity: 1,
   },
   label: {
-    marginTop: 2,
+    marginTop: 4,
     fontSize: 10,
-    lineHeight: 12,
-    minHeight: 24,
+    lineHeight: 14,
+    minHeight: 28,
     textAlign: 'center',
     color: '#334155',
     fontFamily: Fonts.PoppinsMedium,
     width: '100%',
-    paddingHorizontal: 1,
+    paddingHorizontal: 2,
+    paddingVertical: 1,
+    includeFontPadding: false,
   },
   labelActive: {
     color: Colors.primaryColor,

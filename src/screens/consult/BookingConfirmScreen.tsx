@@ -16,8 +16,9 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import LinearGradient from 'react-native-linear-gradient';
 import { Fonts } from '../../common/Fonts';
 import { Colors } from '../../common/Colors';
+import { Images } from '../../common/Images';
 import DoctorAvatar from '../../components/DoctorAvatar';
-import { getAppointmentShareMessage } from '../../helper/shareMessage';
+import { getAppointmentShareMessage } from '../../utils/shareMessage';
 import { handleShareAction } from '../../hooks/DownloadFuction';
 import TablerIcon, { TablerIconName } from '../../components/TablerIcon';
 import {
@@ -28,6 +29,8 @@ import {
 import { formatAppointmentId } from '../../utils/formatDisplayId';
 import { formatRupee } from '../../utils/currencyUtils';
 import { Utils } from '../../common/Utils';
+import { formatDoctorSpecialization } from '../../utils/doctorUtils';
+import { showSuccessToast } from '../../config/Key';
 
 const { height } = Dimensions.get('window');
 const SHEET_HEIGHT = height / 2.1;
@@ -63,7 +66,7 @@ const shareOptions = [
     id: 4,
     title: 'Copy',
     type: 'copy',
-    iconName: 'share' as TablerIconName,
+    iconName: 'copy' as TablerIconName,
     bg: '#F1F5F9',
     color: '#475569',
   },
@@ -163,7 +166,21 @@ const InfoRow = memo(
 );
 
 const BookingConfrimScreen = ({ navigation, route }: any) => {
-  const { SlotsDetail } = route?.params || {};
+  const rawSlotsDetail = route?.params?.SlotsDetail;
+  // book-slot / verify may nest the appointment under `booking` (top-level status = payment status)
+  const SlotsDetail = useMemo(() => {
+    const nested = rawSlotsDetail?.booking;
+    if (!nested || typeof nested !== 'object') return rawSlotsDetail;
+    return {
+      ...rawSlotsDetail,
+      ...nested,
+      appointment_id: nested.appointment_id ?? rawSlotsDetail?.appointment_id,
+      status: nested.status ?? rawSlotsDetail?.status,
+      mode: nested.mode_label ?? nested.mode ?? rawSlotsDetail?.mode,
+      amount: nested.paid_amount ?? rawSlotsDetail?.amount,
+    };
+  }, [rawSlotsDetail]);
+  const fundedByPackage = SlotsDetail?.funded_by_package === true;
   const insets = useSafeAreaInsets();
   const footerBottomPad = Math.max(insets.bottom, 8);
   const [visible, setVisible] = useState(false);
@@ -198,14 +215,15 @@ const BookingConfrimScreen = ({ navigation, route }: any) => {
       ? formatAppointmentTimeLabel(endTimeRaw)
       : '';
 
-    const specialization = Array.isArray(SlotsDetail?.doctor_specialization)
-      ? SlotsDetail.doctor_specialization.filter(Boolean).join(', ')
-      : pickFirst(
-          SlotsDetail?.doctor_specialization,
-          info?.specialization,
-          info?.speciality,
-          SlotsDetail?.specialization,
-        );
+    const specialization =
+      formatDoctorSpecialization(SlotsDetail?.doctor) ||
+      formatDoctorSpecialization(SlotsDetail) ||
+      formatDoctorSpecialization(info) ||
+      pickFirst(
+        info?.specialization,
+        info?.speciality,
+        SlotsDetail?.specialization,
+      );
 
     const status = pickFirst(
       SlotsDetail?.appointment_status,
@@ -356,7 +374,12 @@ const BookingConfrimScreen = ({ navigation, route }: any) => {
       await handleShareAction({
         type,
         message: shareMessage,
-        onComplete: closeBottomSheet,
+        onComplete: () => {
+          if (type === 'copy') {
+            showSuccessToast('Copied to clipboard', 'success');
+          }
+          closeBottomSheet();
+        },
       });
     },
     [closeBottomSheet, shareMessage],
@@ -409,6 +432,11 @@ const BookingConfrimScreen = ({ navigation, route }: any) => {
           end={{ x: 0, y: 1 }}
           style={styles.hero}
         >
+          <Image
+            source={Images.logoRound}
+            style={styles.brandLogo}
+            resizeMode="contain"
+          />
           <View style={styles.checkCircle}>
             <TablerIcon name="check" size={22} color="#FFFFFF" />
           </View>
@@ -463,13 +491,15 @@ const BookingConfrimScreen = ({ navigation, route }: any) => {
               label="Mode"
               value={booking.consultationMode}
             />
-            {!!booking.amount && (
+            {fundedByPackage ? (
+              <MetaChip icon="cash" label="Paid" value="Covered by plan" />
+            ) : !!booking.amount && Number(booking.amount) !== 0 ? (
               <MetaChip
                 icon="cash"
                 label="Paid"
                 value={formatRupee(booking.amount)}
               />
-            )}
+            ) : null}
           </View>
         </View>
 
@@ -503,11 +533,11 @@ const BookingConfrimScreen = ({ navigation, route }: any) => {
           </TouchableOpacity>
           <TouchableOpacity
             activeOpacity={0.85}
-            onPress={openBottomSheet}
+            onPress={() => onPressShareOption('copy')}
             style={styles.actionChip}
           >
-            <TablerIcon name="share" size={15} color={Colors.primaryColor} />
-            <Text style={styles.actionChipText}>Share</Text>
+            <TablerIcon name="copy" size={15} color={Colors.primaryColor} />
+            <Text style={styles.actionChipText}>Copy</Text>
           </TouchableOpacity>
           <TouchableOpacity
             activeOpacity={0.85}
@@ -646,6 +676,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     borderRadius: 14,
     marginBottom: 8,
+  },
+  brandLogo: {
+    width: 52,
+    height: 52,
+    marginBottom: 10,
+    tintColor: Colors.primaryColor,
   },
   checkCircle: {
     width: 44,

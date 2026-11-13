@@ -32,6 +32,10 @@ const InteractiveMapPicker: React.FC<Props> = ({
 }) => {
   const webRef = useRef<WebViewHandle | null>(null);
   const lastCoords = useRef(center);
+  /** True while / after the user pans — ignore parent center echo that would snap the pin back. */
+  const userMovedRef = useRef(false);
+  const suppressEchoUntil = useRef(0);
+  const externalMoveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [mapHtml] = useState(() => buildMapHtml(center));
 
   const handleMessage = useCallback(
@@ -45,6 +49,14 @@ const InteractiveMapPicker: React.FC<Props> = ({
         if (data?.type === 'location' || (data?.lat != null && data?.lng != null)) {
           const coords = { latitude: data.lat, longitude: data.lng };
           lastCoords.current = coords;
+
+          // Drop echo from injectJavaScript moveMapTo
+          if (Date.now() < suppressEchoUntil.current) {
+            return;
+          }
+
+          // User pan/zoom — keep pin here; parent must not yank it back
+          userMovedRef.current = true;
           onCenterChange(coords);
         }
       } catch {
@@ -55,19 +67,40 @@ const InteractiveMapPicker: React.FC<Props> = ({
   );
 
   const moveMapTo = useCallback((coords: Coordinates) => {
+    suppressEchoUntil.current = Date.now() + 500;
+    userMovedRef.current = false;
     webRef.current?.injectJavaScript(
       `window.moveMapTo(${coords.latitude}, ${coords.longitude}); true;`,
     );
   }, []);
 
   React.useEffect(() => {
-    const moved =
-      Math.abs(center.latitude - lastCoords.current.latitude) > 0.00001 ||
-      Math.abs(center.longitude - lastCoords.current.longitude) > 0.00001;
-    if (moved) {
+    const dLat = Math.abs(center.latitude - lastCoords.current.latitude);
+    const dLng = Math.abs(center.longitude - lastCoords.current.longitude);
+    const moved = dLat > 0.00008 || dLng > 0.00008;
+    if (!moved) return;
+
+    // Tiny parent deltas after a drag are reverse-geocode / pincode echoes — ignore.
+    // Large jumps (search / GPS / typed pincode) must still move the map.
+    const isTinyEcho = dLat < 0.002 && dLng < 0.002; // ~200m
+    if (userMovedRef.current && isTinyEcho) {
+      lastCoords.current = center;
+      return;
+    }
+
+    if (externalMoveTimer.current) {
+      clearTimeout(externalMoveTimer.current);
+    }
+    externalMoveTimer.current = setTimeout(() => {
       moveMapTo(center);
       lastCoords.current = center;
-    }
+    }, 120);
+
+    return () => {
+      if (externalMoveTimer.current) {
+        clearTimeout(externalMoveTimer.current);
+      }
+    };
   }, [center.latitude, center.longitude, moveMapTo, center]);
 
   if (loading) {
@@ -86,16 +119,6 @@ const InteractiveMapPicker: React.FC<Props> = ({
         source={{ html: mapHtml, baseUrl: 'https://localhost' }}
         style={styles.webview}
         onMessage={handleMessage}
-        // onError={(event: any) => {
-        //   console.log('[MapPicker] WebView error', event?.nativeEvent);
-        // }}
-        // onHttpError={(event: any) => {
-        //   console.log(
-        //     '[MapPicker] HTTP error',
-        //     event?.nativeEvent?.statusCode,
-        //     event?.nativeEvent?.url,
-        //   );
-        // }}
         javaScriptEnabled
         domStorageEnabled
         geolocationEnabled

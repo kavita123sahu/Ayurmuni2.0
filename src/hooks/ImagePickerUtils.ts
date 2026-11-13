@@ -16,7 +16,6 @@ const pickerOptions = {
   maxHeight: 1200,
 };
 
-
 import { PermissionsAndroid, Platform } from 'react-native';
 
 const requestCameraPermission =

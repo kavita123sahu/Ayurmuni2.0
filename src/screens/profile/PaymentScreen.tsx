@@ -1,5 +1,5 @@
 // screens/PaymentsScreen.tsx
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -136,8 +136,34 @@ const statusTone = (status: string) => {
   return '#DC2626';
 };
 
+class PaymentListBoundary extends React.Component<
+  { children: React.ReactNode },
+  { failed: boolean }
+> {
+  state = { failed: false };
+
+  static getDerivedStateFromError() {
+    return { failed: true };
+  }
+
+  render() {
+    if (this.state.failed) {
+      return (
+        <View style={styles.emptyWrap}>
+          <Text style={styles.emptyTitle}>Could not show transactions</Text>
+          <Text style={styles.emptySubtitle}>
+            Pull to refresh, or go back and open Payments again.
+          </Text>
+        </View>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 const PaymentsScreen = (props: any) => {
   const insets = useSafeAreaInsets();
+  const allowLoadMoreRef = useRef(false);
   const [source, setSource] = useState<SourceFilter>('all');
   const [entry, setEntry] = useState<EntryFilter>('all');
   const [datePreset, setDatePreset] = useState<DatePreset>('all');
@@ -175,7 +201,8 @@ const PaymentsScreen = (props: any) => {
   const sections = useMemo(() => {
     const groups: { title: string; data: PaymentHistoryEntry[] }[] = [];
     items.forEach(item => {
-      const key = monthKey(item.created_at);
+      if (!item) return;
+      const key = monthKey(String(item.created_at || ''));
       const last = groups[groups.length - 1];
       if (last && last.title === key) last.data.push(item);
       else groups.push({ title: key, data: [item] });
@@ -224,52 +251,62 @@ const PaymentsScreen = (props: any) => {
 
   const renderItem = useCallback(
     ({ item }: { item: PaymentHistoryEntry }) => {
-      const isCredit = item.entry_type === 'credit';
-      const time = formatEntryTime(item.created_at);
-      return (
-        <TouchableOpacity
-          style={styles.row}
-          activeOpacity={0.8}
-          onPress={() =>
-            props.navigation.navigate('TransactionDetailsScreen', {
-              transaction: item,
-            })
-          }
-        >
-          <View style={[styles.rowIcon, isCredit && styles.rowIconCredit]}>
-            <TablerIcon
-              name={entryIcon(item)}
-              size={18}
-              color={isCredit ? '#15803D' : Colors.primaryColor}
-            />
-          </View>
+      try {
+        const isCredit = item?.entry_type === 'credit';
+        const time = formatEntryTime(String(item?.created_at || ''));
+        const patientName =
+          item?.patient && typeof item.patient.name === 'string' ? item.patient.name : '';
+        const meta = [time, patientName].filter(Boolean).join(' · ');
+        return (
+          <TouchableOpacity
+            style={styles.row}
+            activeOpacity={0.8}
+            onPress={() =>
+              props.navigation.navigate('TransactionDetailsScreen', {
+                transaction: item,
+              })
+            }
+          >
+            <View style={[styles.rowIcon, isCredit && styles.rowIconCredit]}>
+              <TablerIcon
+                name={entryIcon(item)}
+                size={18}
+                color={isCredit ? '#15803D' : Colors.primaryColor}
+              />
+            </View>
 
-          <View style={styles.rowBody}>
-            <Text style={styles.rowTitle} numberOfLines={1}>
-              {getEntryTitle(item)}
-            </Text>
-            <Text
-              style={[styles.rowStatus, { color: statusTone(item.status) }]}
-              numberOfLines={1}
-            >
-              {formatEventType(item.event_type)}
-            </Text>
-            <Text style={styles.rowMeta} numberOfLines={1}>
-              {[time, item.patient?.name].filter(Boolean).join(' · ')}
-            </Text>
-          </View>
+            <View style={styles.rowBody}>
+              <Text style={styles.rowTitle} numberOfLines={1}>
+                {getEntryTitle(item)}
+              </Text>
+              <Text
+                style={[styles.rowStatus, { color: statusTone(String(item?.status || '')) }]}
+                numberOfLines={1}
+              >
+                {formatEventType(item?.event_type)}
+              </Text>
+              {meta ? (
+                <Text style={styles.rowMeta} numberOfLines={1}>
+                  {meta}
+                </Text>
+              ) : null}
+            </View>
 
-          <View style={styles.rowRight}>
-            <Text style={[styles.rowAmount, isCredit && styles.rowAmountCredit]}>
-              {isCredit ? '+ ' : ''}
-              {formatRupee(item.amount)}
-            </Text>
-            <Text style={styles.rowDirection}>
-              {isCredit ? 'Credited' : 'Debited'}
-            </Text>
-          </View>
-        </TouchableOpacity>
-      );
+            <View style={styles.rowRight}>
+              <Text style={[styles.rowAmount, isCredit && styles.rowAmountCredit]}>
+                {isCredit ? '+ ' : ''}
+                {formatRupee(item?.amount)}
+              </Text>
+              <Text style={styles.rowDirection}>
+                {isCredit ? 'Credited' : 'Debited'}
+              </Text>
+            </View>
+          </TouchableOpacity>
+        );
+      } catch (error) {
+        console.log('PAYMENT_ROW_RENDER_ERROR', error);
+        return null;
+      }
     },
     [props.navigation],
   );
@@ -328,6 +365,7 @@ const PaymentsScreen = (props: any) => {
         showsHorizontalScrollIndicator={false}
         style={styles.chipScroll}
         contentContainerStyle={styles.chipRow}
+        nestedScrollEnabled
       >
         <TouchableOpacity
           style={[styles.chip, datePreset !== 'all' && styles.chipActive]}
@@ -380,12 +418,17 @@ const PaymentsScreen = (props: any) => {
         ) : null}
       </ScrollView>
 
+      <PaymentListBoundary>
       <SectionList
         sections={sections}
-        keyExtractor={item => item.id}
+        keyExtractor={(item, index) => `${String(item?.id || 'payment')}-${index}`}
         renderItem={renderItem}
         renderSectionHeader={renderSectionHeader}
         stickySectionHeadersEnabled={false}
+        removeClippedSubviews={false}
+        initialNumToRender={8}
+        maxToRenderPerBatch={8}
+        windowSize={7}
         style={styles.list}
         contentContainerStyle={[
           styles.listContent,
@@ -400,7 +443,13 @@ const PaymentsScreen = (props: any) => {
             tintColor={Colors.primaryColor}
           />
         }
+        onScrollBeginDrag={() => {
+          allowLoadMoreRef.current = true;
+        }}
         onEndReached={() => {
+          // onEndReached also fires when the first page is shorter than the screen.
+          // Loading that page automatically was retriggering the crash.
+          if (!allowLoadMoreRef.current) return;
           if (hasMore && !loadingMore && !loading) loadMore();
         }}
         onEndReachedThreshold={0.35}
@@ -434,6 +483,7 @@ const PaymentsScreen = (props: any) => {
           ) : null
         }
       />
+      </PaymentListBoundary>
 
       <Modal
         visible={showDateSheet}
@@ -445,7 +495,7 @@ const PaymentsScreen = (props: any) => {
         <Pressable style={styles.sheetBackdrop} onPress={() => setShowDateSheet(false)}>
           <Pressable
             style={[styles.sheet, { paddingBottom: insets.bottom + 16 }]}
-            onPress={() => {}}
+            onPress={() => { }}
           >
             <View style={styles.sheetHandle} />
             <Text style={styles.sheetTitle}>Filter by date</Text>
@@ -566,6 +616,7 @@ const styles = StyleSheet.create({
   },
   chipScroll: {
     flexGrow: 0,
+    height: 46,
     marginTop: 10,
   },
   chipRow: {

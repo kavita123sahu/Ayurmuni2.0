@@ -2,7 +2,6 @@ import { Utils } from "../common/Utils";
 import { ApiResponse, BaseUrl, Method } from "../config/Key";
 import { apiClient } from "./APIconfig";
 
-
 export const send_otp = async (data: Object) => {
     try {
         const response = await apiClient('user/send-otp/', {
@@ -17,8 +16,6 @@ export const send_otp = async (data: Object) => {
     }
 };
 
-
-
 export const verify_otp_login = async (data: Object) => {
     try {
         const response = await apiClient('user/customer/login/', {
@@ -30,7 +27,6 @@ export const verify_otp_login = async (data: Object) => {
         throw error;
     }
 };
-
 
 export const onBoarding = async (data: any) => {
 
@@ -46,7 +42,6 @@ export const onBoarding = async (data: any) => {
     }
 };
 
-
 export const verify_otp = async (data: Object) => {
     try {
         const response = await apiClient('user/customer/register/', {
@@ -58,9 +53,3 @@ export const verify_otp = async (data: Object) => {
         throw error;
     }
 };
-
-
-
-
-
-

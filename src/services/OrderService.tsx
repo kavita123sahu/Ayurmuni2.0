@@ -29,16 +29,25 @@ export const getOrderFeeQuote = async (payload: {
     body.cod_charges = Number(payload.cod_charges);
   }
 
-  const response = await apiClient('order/fee-quote/', {
+  return apiClient('order/fee-quote/', {
     method: 'POST',
     body: JSON.stringify(body),
   });
-  console.log("orderfessssss", response)
-  return response;
 };
 
 export const place_order_API = async (data: Object) => {
   try {
+    console.log(
+      'PLACE_ORDER_API =>',
+      JSON.stringify(
+        {
+          payment_gateway: (data as any)?.payment_gateway,
+          payment_type: (data as any)?.payment_type,
+        },
+        null,
+        2,
+      ),
+    );
     const response = await apiClient('order/', {
       method: 'POST',
       body: JSON.stringify(data),
@@ -61,6 +70,7 @@ export const verifyOrderPayment = async (data: object) => {
     throw error;
   }
 };
+
 
 export const normalizeOrdersList = (response: any): any[] => {
   if (response?.success === false) {
@@ -132,10 +142,9 @@ export const getOrders = async (params?: GetOrdersParams) => {
 
     const path = query.toString() ? `order/?${query.toString()}` : 'order/';
 
-    const response = await apiClient(path, {
+    return apiClient(path, {
       method: 'GET',
     });
-    return response;
   } catch (error) {
     throw error;
   }
@@ -228,7 +237,18 @@ export const getCustomerPaymentHistory = async (
   );
 };
 
+export type CustomerPaymentGatewayRow = {
+  id: string;
+  name: string;
+  status: string;
+};
 
+/** GET payments/customer/payment-gateways/ — active / inactive / maintenance flags. */
+export const getCustomerPaymentGateways = async () => {
+  return apiClient('payments/customer/payment-gateways/', {
+    method: 'GET',
+  });
+};
 
 export const cancelOrder = async (
   orderId: string | number,
@@ -350,9 +370,9 @@ export const extractLiveTracking = (pollResponse: any): LiveTrackingInfo | null 
   // Build location history from status_history / tracking_history / scans
   const historyRaw: any[] =
     Array.isArray(raw?.tracking_history) ? raw.tracking_history :
-    Array.isArray(raw?.status_history) ? raw.status_history :
-    Array.isArray(raw?.scans) ? raw.scans :
-    Array.isArray(raw?.activities) ? raw.activities : [];
+      Array.isArray(raw?.status_history) ? raw.status_history :
+        Array.isArray(raw?.scans) ? raw.scans :
+          Array.isArray(raw?.activities) ? raw.activities : [];
 
   const locationHistory = historyRaw
     .slice()
@@ -431,7 +451,7 @@ export const downloadInvoiceFile = async (orderId: string | number) => {
     try {
       const errBody = await response.text();
       if (errBody) errMsg += ` — ${errBody.slice(0, 200)}`;
-    } catch {}
+    } catch { }
     throw new Error(errMsg);
   }
 
