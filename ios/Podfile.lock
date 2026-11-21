@@ -3,6 +3,15 @@ PODS:
   - AgoraVideo_Special_iOS (4.6.2.70)
   - BVLinearGradient (2.8.3):
     - React-Core
+  - CashfreeAnalyticsSDK (2.5.2):
+    - CFNetworkSDK (= 2.5.2)
+  - CashfreePG (2.5.2):
+    - CashfreePGUISDK (= 2.5.2)
+  - CashfreePGCoreSDK (2.5.2):
+    - CashfreeAnalyticsSDK (= 2.5.2)
+  - CashfreePGUISDK (2.5.2):
+    - CashfreePGCoreSDK (= 2.5.2)
+  - CFNetworkSDK (2.5.2)
   - FBLazyVector (0.84.1)
   - hermes-engine (250829098.0.9):
     - hermes-engine/Pre-built (= 250829098.0.9)
@@ -1480,6 +1489,29 @@ PODS:
     - ReactCommon/turbomodule/core
     - ReactNativeDependencies
     - Yoga
+  - react-native-cashfree-pg-sdk (3.0.0):
+    - CashfreePG (= 2.5.2)
+    - hermes-engine
+    - RCTRequired
+    - RCTTypeSafety
+    - React-Core
+    - React-Core-prebuilt
+    - React-debug
+    - React-Fabric
+    - React-featureflags
+    - React-graphics
+    - React-ImageManager
+    - React-jsi
+    - React-NativeModulesApple
+    - React-RCTFabric
+    - React-renderercss
+    - React-rendererdebug
+    - React-utils
+    - ReactCodegen
+    - ReactCommon/turbomodule/bridging
+    - ReactCommon/turbomodule/core
+    - ReactNativeDependencies
+    - Yoga
   - react-native-document-picker (12.0.1):
     - hermes-engine
     - RCTRequired
@@ -2204,8 +2236,6 @@ PODS:
     - ReactCommon/turbomodule/core
     - ReactNativeDependencies
     - Yoga
-  - RNFileViewer (2.1.5):
-    - React-Core
   - RNFS (2.20.0):
     - React-Core
   - RNGestureHandler (2.32.0):
@@ -2581,6 +2611,7 @@ DEPENDENCIES:
   - React-Mapbuffer (from `../node_modules/react-native/ReactCommon`)
   - React-microtasksnativemodule (from `../node_modules/react-native/ReactCommon/react/nativemodule/microtasks`)
   - react-native-agora (from `../node_modules/react-native-agora`)
+  - react-native-cashfree-pg-sdk (from `../node_modules/react-native-cashfree-pg-sdk`)
   - "react-native-document-picker (from `../node_modules/@react-native-documents/picker`)"
   - "react-native-geolocation (from `../node_modules/@react-native-community/geolocation`)"
   - react-native-image-picker (from `../node_modules/react-native-image-picker`)
@@ -2627,7 +2658,6 @@ DEPENDENCIES:
   - "RNCAsyncStorage (from `../node_modules/@react-native-async-storage/async-storage`)"
   - "RNCClipboard (from `../node_modules/@react-native-clipboard/clipboard`)"
   - "RNDateTimePicker (from `../node_modules/@react-native-community/datetimepicker`)"
-  - RNFileViewer (from `../node_modules/react-native-file-viewer`)
   - RNFS (from `../node_modules/react-native-fs`)
   - RNGestureHandler (from `../node_modules/react-native-gesture-handler`)
   - RNReanimated (from `../node_modules/react-native-reanimated`)
@@ -2642,6 +2672,11 @@ SPEC REPOS:
   trunk:
     - AgoraIrisRTC_iOS2
     - AgoraVideo_Special_iOS
+    - CashfreeAnalyticsSDK
+    - CashfreePG
+    - CashfreePGCoreSDK
+    - CashfreePGUISDK
+    - CFNetworkSDK
     - OneSignalXCFramework
     - razorpay-core-pod
     - razorpay-pod
@@ -2728,6 +2763,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/react-native/ReactCommon/react/nativemodule/microtasks"
   react-native-agora:
     :path: "../node_modules/react-native-agora"
+  react-native-cashfree-pg-sdk:
+    :path: "../node_modules/react-native-cashfree-pg-sdk"
   react-native-document-picker:
     :path: "../node_modules/@react-native-documents/picker"
   react-native-geolocation:
@@ -2820,8 +2857,6 @@ EXTERNAL SOURCES:
     :path: "../node_modules/@react-native-clipboard/clipboard"
   RNDateTimePicker:
     :path: "../node_modules/@react-native-community/datetimepicker"
-  RNFileViewer:
-    :path: "../node_modules/react-native-file-viewer"
   RNFS:
     :path: "../node_modules/react-native-fs"
   RNGestureHandler:
@@ -2845,6 +2880,11 @@ SPEC CHECKSUMS:
   AgoraIrisRTC_iOS2: 13996c3c78134da357634f6a1a12741436658886
   AgoraVideo_Special_iOS: 9bd42c487f936f4d335d5630e2632f0b08e214f5
   BVLinearGradient: cb006ba232a1f3e4f341bb62c42d1098c284da70
+  CashfreeAnalyticsSDK: d628c6cbdc73c6575a69060785e01634b70f6b48
+  CashfreePG: 55a4fd8b53d7849ba76562f0a8ddb17cc4a747e7
+  CashfreePGCoreSDK: 018e8682b1390cffd6dfecc6c7be40a6b9c8e6f8
+  CashfreePGUISDK: faac14cfd135c4cdc90ee69a0cb9061d353286d4
+  CFNetworkSDK: a22324ee71e9875f8251c08d18aebdabefef8dbd
   FBLazyVector: e97c19a5a442429d1988f182a1940fb08df514da
   hermes-engine: ef8db7856f202cebb70ce918b775433e31e3acb5
   OneSignalXCFramework: 48e5b7c5b51d4e67bab3405229f963efde1a3894
@@ -2887,6 +2927,7 @@ SPEC CHECKSUMS:
   React-Mapbuffer: f4ee8c62e0ef8359d139124f35a471518a172cd3
   React-microtasksnativemodule: d1956f0eec54c619b63a379520fb4c618a55ccb9
   react-native-agora: c37da1d6b8f05956793a2d30491cc3689cb33fd3
+  react-native-cashfree-pg-sdk: a33f5f996a7f4399ff5234b41b5f21b08b678b63
   react-native-document-picker: 29b2ee2573287f2b34c7716c98ffc3d9322fbe72
   react-native-geolocation: cfc39041210bd9f591ec2beb7d417291251da8e5
   react-native-image-picker: 48d850454b4a389753053e1d7378b624d3b47d77
@@ -2933,7 +2974,6 @@ SPEC CHECKSUMS:
   RNCAsyncStorage: 3a4f5e2777dae1688b781a487923a08569e27fe4
   RNCClipboard: 88d7eeb555d1183915f0885bdbc5c97eb6f7f3ba
   RNDateTimePicker: 9025ccd219b382f246e9ceb85cd4095279b9bad1
-  RNFileViewer: 4b5d83358214347e4ab2d4ca8d5c1c90d869e251
   RNFS: 89de7d7f4c0f6bafa05343c578f61118c8282ed8
   RNGestureHandler: da4fb36c32e8ac2b9e85cacd828aab4014fe4b16
   RNReanimated: 307d6646b0d5b330454eee184099f4dd48cc5086

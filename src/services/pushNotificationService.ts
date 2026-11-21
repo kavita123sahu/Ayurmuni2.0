@@ -351,8 +351,11 @@ export const waitForPushSubscriptionReady = async (options?: {
     };
 
     const check = async () => {
-      const data = await getOneSignalPushData();
-      if (isPushReady(data)) {
+      const data = await Promise.race([
+        getOneSignalPushData(),
+        wait(2500).then(() => null),
+      ]);
+      if (data && isPushReady(data)) {
         finish({
           subscriptionId: data.subscriptionId,
           fcmToken: data.fcmToken,

@@ -101,3 +101,17 @@ dependencies {
         implementation jscFlavor
     }
 }
+
+// Ninja clean reconfigures CMake after codegen folders are already deleted.
+// Remove the CMake cache instead of running that native clean.
+tasks.configureEach { task ->
+    if (task.name.startsWith("externalNativeBuildClean")) {
+        task.enabled = false
+    }
+}
+
+tasks.named("clean").configure {
+    doFirst {
+        delete("${projectDir}/.cxx")
+    }
+}

@@ -460,37 +460,22 @@ if (!isNotificationEnabled) {
     );
 
     /**
-     * completeWelcomePushFlow() will:
-     *
-     * 1. Ensure notification permission
-     * 2. Ensure OneSignal push subscription exists
-     * 3. Call OneSignal.login(userId) ONCE
-     * 4. Wait for External ID association
-     * 5. Wait 5 seconds for cloud sync
-     * 6. Check subscription status
-     * 7. Call welcome API only when subscription is ready
+     * Push registration must not block the verify spinner. OneSignal
+     * waits on a device token that App Review phones often never return.
      */
-    const welcomeResult =
-      await completeWelcomePushFlow(userId);
-
-    console.log(
-      '🟢 [STEP 12] Welcome push flow result:',
-      welcomeResult,
-    );
-
-    if (welcomeResult?.success) {
-      console.log(
-        '🎉 [STEP 12] WELCOME PUSH SUCCESS',
-      );
-    } else {
-      console.warn(
-        '⚠️ [STEP 12] WELCOME PUSH NOT DELIVERED',
-        {
-          reason: welcomeResult?.reason,
-          status: welcomeResult?.status,
-        },
-      );
-    }
+    void completeWelcomePushFlow(userId)
+      .then(welcomeResult => {
+        console.log(
+          '🟢 [STEP 12] Welcome push flow result:',
+          welcomeResult,
+        );
+      })
+      .catch(oneSignalError => {
+        console.log(
+          '❌ [STEP 12] OneSignal / welcome flow ERROR:',
+          oneSignalError,
+        );
+      });
   } catch (oneSignalError: any) {
     console.error(
       '❌ [STEP 12] OneSignal / welcome flow ERROR:',
@@ -737,48 +722,16 @@ if (!isNotificationEnabled) {
         );
 
         if (userId) {
-          try {
-            console.log(
-              '====================================',
-            );
-
-            console.log(
-              '🔵 Connecting user with OneSignal',
-            );
-
-            console.log(
-              'OneSignal External ID:',
-              String(userId),
-            );
-
-            // Permission only after OTP (never on app start)
-            await ensureDeviceNotificationsEnabled();
-
-            const oneSignalData =
-              await loginOneSignalUser(
-                userId,
+          // Push setup can wait on an APNs token that never arrives
+          // (App Review devices). Do not hold the login spinner for it.
+          void ensureDeviceNotificationsEnabled()
+            .then(() => loginOneSignalUser(userId))
+            .catch(oneSignalError => {
+              console.log(
+                '⚠️ OneSignal connection failed:',
+                oneSignalError,
               );
-
-            console.log(
-              '✅ OneSignal user connected:',
-              oneSignalData,
-            );
-
-            console.log(
-              '====================================',
-            );
-          } catch (oneSignalError) {
-            /**
-             * IMPORTANT:
-             *
-             * OneSignal failure should NOT
-             * break user login.
-             */
-            console.log(
-              '⚠️ OneSignal connection failed:',
-              oneSignalError,
-            );
-          }
+            });
         }
 
         /**

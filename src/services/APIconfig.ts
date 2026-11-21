@@ -131,6 +131,8 @@ const getFreshToken = async () => {
 |--------------------------------------------------------------------------
 */
 
+const REQUEST_TIMEOUT_MS = 20000;
+
 const makeRequest = async (
     endpoint: string,
     options: RequestInit,
@@ -154,13 +156,24 @@ const makeRequest = async (
         ...(options.headers || {}),
     };
 
-    return fetch(
-        BaseUrl.base_url + endpoint,
-        {
-            ...options,
-            headers,
-        },
+    const controller = new AbortController();
+    const timer = setTimeout(
+        () => controller.abort(),
+        REQUEST_TIMEOUT_MS,
     );
+
+    try {
+        return await fetch(
+            BaseUrl.base_url + endpoint,
+            {
+                ...options,
+                headers,
+                signal: options.signal ?? controller.signal,
+            },
+        );
+    } finally {
+        clearTimeout(timer);
+    }
 };
 
 const performApiRequest = async (
@@ -242,11 +255,14 @@ const performApiRequest = async (
     }
 
     catch (error: any) {
+        const aborted =
+            error?.name === 'AbortError' ||
+            String(error?.message || '').toLowerCase().includes('aborted');
         return {
             success: false,
-            message:
-                error?.message ||
-                'Network Error',
+            message: aborted
+                ? 'The server took too long to respond. Please try again.'
+                : error?.message || 'Network Error',
         };
     }
 };
