@@ -33,6 +33,7 @@ import { uploadImage } from '../hooks/usePatientData';
 import * as ProfileServices from '../services/ProfileServices';
 import { showSuccessToast } from '../config/Key';
 import { Utils } from '../common/Utils';
+import { openHomeStackScreen } from '../navigation/navigationUtils';
 
 const toText = (value: unknown) =>
   value === null || value === undefined ? '' : String(value);
@@ -81,8 +82,6 @@ const ProfileHeader = ({ user, navigation, onUserUpdated }: any) => {
     [categories],
   );
 
-  const stackNav = navigation?.getParent?.() || navigation;
-
   const diseases = useMemo(() => resolveDiseaseList(user), [user]);
   const selectedDiseaseIds = useMemo(
     () => diseases.map(d => d.id).filter(Boolean),
@@ -96,13 +95,13 @@ const ProfileHeader = ({ user, navigation, onUserUpdated }: any) => {
 
         switch (stat.label) {
           case 'CONSULTS':
-            onPress = () => stackNav?.navigate?.('Appointments');
+            onPress = () => openHomeStackScreen(navigation, 'Appointments');
             break;
           case 'ORDERS':
-            onPress = () => stackNav?.navigate?.('OrderHistory');
+            onPress = () => openHomeStackScreen(navigation, 'OrderHistory');
             break;
           case 'REPORTS':
-            onPress = () => stackNav?.navigate?.('MedicalRecords');
+            onPress = () => openHomeStackScreen(navigation, 'MedicalRecords');
             break;
           default:
             break;
@@ -110,7 +109,7 @@ const ProfileHeader = ({ user, navigation, onUserUpdated }: any) => {
 
         return { ...stat, onPress };
       }),
-    [dashboardStats, stackNav],
+    [dashboardStats, navigation],
   );
 
   useFocusEffect(
@@ -478,7 +477,7 @@ export default React.memo(ProfileHeader);
 
 const styles = StyleSheet.create({
   wrapper: {
-    flex: 1,
+    width: '100%',
   },
   container: {
     borderRadius: 20,

@@ -877,9 +877,8 @@ const HomePage: React.FC = (props: any) => {
             </View> */}
 
             <View style={styles.homeSection}>
-              <SectionHeader home title="Panchakarma" actionText="View all" />
-              <PanchakarmaSection />
-              {/* Same section — no gap between Panchakarma and brand art */}
+              {/* <SectionHeader home title="Panchakarma" actionText="View all" />
+              <PanchakarmaSection /> */}
               <AyurmuniBrandShade />
             </View>
           </View>

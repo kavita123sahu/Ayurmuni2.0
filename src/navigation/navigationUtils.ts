@@ -102,6 +102,38 @@ export const getStackNavigation = (navigation: any) => {
   return navigation?.getParent?.() || navigation;
 };
 
+/**
+ * Profile lives on the tab navigator. Its parent is the home stack
+ * (orders, appointments, settings). The parent above that is the root
+ * stack (Welcome / Auth) — navigating there closes the current screen.
+ */
+export const getHomeStackNavigation = (navigation: any) => {
+  let current = navigation;
+
+  for (let depth = 0; depth < 6 && current; depth += 1) {
+    const routeNames: string[] = current?.getState?.()?.routeNames ?? [];
+    if (
+      routeNames.includes('OrderHistory') &&
+      routeNames.includes('Appointments') &&
+      routeNames.includes('Settings')
+    ) {
+      return current;
+    }
+    current = current?.getParent?.();
+  }
+
+  return navigation?.getParent?.() || navigation;
+};
+
+export const openHomeStackScreen = (navigation: any, screen: string) => {
+  const stack = getHomeStackNavigation(navigation);
+  if (typeof stack?.navigate === 'function') {
+    stack.navigate(screen);
+    return;
+  }
+  navigation?.navigate?.(screen);
+};
+
 export const navigateToStackScreen = (
   navigation: any,
   screen: keyof RootStackParamList,

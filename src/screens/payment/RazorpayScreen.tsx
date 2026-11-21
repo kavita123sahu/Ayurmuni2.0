@@ -1079,7 +1079,7 @@ const RazorpayScreen = ({ route, navigation }: any) => {
             }
 
             // ── Cashfree SDK ───────────────────────────────────────
-            // book-slot → (session from API or SANDBOX create) → doWebPayment → verify
+            // book-slot → payment_session_id → doWebPayment → verify
             if (apiGateway === 'cashfree') {
                 let cfSession;
                 try {
@@ -1832,7 +1832,7 @@ const RazorpayScreen = ({ route, navigation }: any) => {
                                             <Text style={styles.totalLabel}>
                                                 Total payable
                                             </Text>
-                                            <View style={styles.secureRow}>
+                                            {/* <View style={styles.secureRow}>
                                                 <TablerIcon
                                                     name="shield"
                                                     size={12}
@@ -1841,7 +1841,7 @@ const RazorpayScreen = ({ route, navigation }: any) => {
                                                 <Text style={styles.secureText}>
                                                     Razorpay secure
                                                 </Text>
-                                            </View>
+                                            </View> */}
                                         </View>
                                         <RupeeAmount
                                             value={totalAmount}

@@ -75,9 +75,20 @@ export const usePackagePurchase = (navigation: any) => {
         const purchase: PackagePurchase = res.data.purchase;
         const razorpayKey: string = res.data.razorpay_key;
         const checkout: PackageCheckout = res.data.checkout;
-        const gatewayUsed: PaymentGateway =
-          (String(res.data.payment_gateway || gateway).toLowerCase() as PaymentGateway) ||
-          gateway;
+        const checkoutData =
+          checkout && typeof checkout === 'object' ? checkout : {};
+        const paymentSource = {
+          ...res.data,
+          ...checkoutData,
+          cashfree: checkoutData.cashfree || res.data.cashfree,
+          icici: checkoutData.icici || res.data.icici,
+        };
+        const gatewayUsed = toApiPaymentGateway(
+          checkoutData.payment_gateway ||
+            purchase.payment_gateway ||
+            res.data.payment_gateway ||
+            gateway,
+        );
 
         console.log('PACKAGE_PURCHASE_ID =>', purchase.id, '| gateway =>', gatewayUsed);
 
@@ -88,7 +99,7 @@ export const usePackagePurchase = (navigation: any) => {
 
         try {
           if (gatewayUsed === 'cashfree') {
-            const cfSession = await resolveCashfreeCheckout(res.data);
+            const cfSession = await resolveCashfreeCheckout(paymentSource);
             const cfResult = await openCashfreePayment(cfSession);
             if (cfResult.status === 'cancelled') {
               showSuccessToast(
@@ -110,6 +121,7 @@ export const usePackagePurchase = (navigation: any) => {
               appId: cfSession.appId,
               appSecret: cfSession.appSecret,
               hintPaymentId: cfResult.gatewayPaymentId,
+              environment: cfSession.environment,
             });
             verifyPayload = {
               ...verifyPayload,
@@ -121,8 +133,8 @@ export const usePackagePurchase = (navigation: any) => {
               }),
             };
           } else if (gatewayUsed === 'icici') {
-            const appInfo = parsePayphiAppInfo(res.data);
-            const payRequest = parsePayphiPaymentRequest(res.data);
+            const appInfo = parsePayphiAppInfo(paymentSource);
+            const payRequest = parsePayphiPaymentRequest(paymentSource);
             if (!payRequest) {
               showSuccessToast(
                 'ICICI payment details missing for this plan. Try Razorpay.',
@@ -143,7 +155,7 @@ export const usePackagePurchase = (navigation: any) => {
               return;
             }
             const merchantTxnNo = resolveIciciMerchantTxnNo(
-              res.data,
+              paymentSource,
               payphiResult.gatewayOrderId || payphiResult.gatewayPaymentId,
             );
             verifyPayload = {

@@ -35,15 +35,30 @@ export const formatAmountOnly = (
     return raw || null;
   }
 
+  const formatGrouped = (digits: number) => {
+    try {
+      if (opts?.decimals === false || opts?.decimals == null) {
+        return Math.round(n).toLocaleString('en-IN');
+      }
+      return n.toLocaleString('en-IN', {
+        minimumFractionDigits: digits,
+        maximumFractionDigits: digits,
+      });
+    } catch {
+      const rounded =
+        opts?.decimals === false || opts?.decimals == null
+          ? Math.round(n)
+          : Number(n.toFixed(digits));
+      return String(rounded);
+    }
+  };
+
   if (opts?.decimals === false || opts?.decimals == null) {
-    return Math.round(n).toLocaleString('en-IN');
+    return formatGrouped(0);
   }
 
   const places = typeof opts.decimals === 'number' ? opts.decimals : 2;
-  return n.toLocaleString('en-IN', {
-    minimumFractionDigits: places,
-    maximumFractionDigits: places,
-  });
+  return formatGrouped(places);
 };
 
 /** Format as ₹ + amount with no space (Flipkart-style). */

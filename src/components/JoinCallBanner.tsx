@@ -20,7 +20,7 @@ type Props = {
 };
 
 const PRE_WINDOW_MS = 5 * 60 * 1000;
-const FALLBACK_SLOT_MS = 15 * 60 * 1000;
+const FALLBACK_SLOT_MS = 30 * 60 * 1000;
 /** 1s tick so "X min left" and hide-at-end_time stay accurate. */
 const TICK_MS = 1_000;
 
@@ -129,10 +129,12 @@ const JoinCallBanner = ({ joinable, navigation }: Props) => {
 
   // Pre-start: countdown to start. In-slot / live: countdown to end_time.
   const rightLabel = isLive
-    ? endLeftLabel || 'Live now'
-    : !afterStart
-      ? `Starts in ${minutesToStart} min`
-      : endLeftLabel || 'Ready to join';
+    ? ""
+    // endLeftLabel || 'Live now' 
+    :
+     !afterStart
+    ? `Starts in ${minutesToStart} min`
+    : endLeftLabel || 'Ready to join';
 
   return (
     <Pressable

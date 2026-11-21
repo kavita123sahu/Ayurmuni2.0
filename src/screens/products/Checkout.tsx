@@ -8,8 +8,9 @@ import {
     Image,
     StatusBar,
     ActivityIndicator,
-    Modal,
+    BackHandler,
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
 import AppHeader from '../../components/AppHeader';
@@ -120,6 +121,17 @@ const Checkout: React.FC = (props: any) => {
     });
     const { isPlacing, orderError, placeOrder } = usePlaceOrder();
     const { isPaying, isVerifyingPayment, payOnline } = useProductOnlinePayment();
+
+    useFocusEffect(
+        useCallback(() => {
+            if (!isVerifyingPayment) return undefined;
+            const sub = BackHandler.addEventListener(
+                'hardwareBackPress',
+                () => true,
+            );
+            return () => sub.remove();
+        }, [isVerifyingPayment]),
+    );
 
     const {
         gateways: gatewayOptions,
@@ -527,7 +539,10 @@ const Checkout: React.FC = (props: any) => {
 
             <AppHeader
                 title="Checkout"
-                onLeftPress={() => props.navigation.goBack()}
+                onLeftPress={() => {
+                    if (isVerifyingPayment) return;
+                    props.navigation.goBack();
+                }}
             />
 
             <ScrollView
@@ -1057,25 +1072,20 @@ const Checkout: React.FC = (props: any) => {
                 </View>
             </View>
 
-            <Modal
-                visible={isVerifyingPayment}
-                transparent={false}
-                animationType="fade"
-                onRequestClose={() => { }}
-            >
-                <SafeAreaView style={styles.verificationScreen}>
+            {isVerifyingPayment ? (
+                <View style={styles.verificationScreen}>
                     <View style={styles.verificationContent}>
                         <ActivityIndicator
                             size="large"
                             color={Colors.primaryColor}
                         />
                         <Text style={styles.verificationTitle}>
-                            Verifying Payment
+                            Checking your payment
                         </Text>
                         <Text style={styles.verificationSubtitle}>
-                            Payment is being verified.{'\n'}
-                            Please do not press back or close the app.{'\n'}
-                            This may take a few seconds.
+                            You are back from the payment gateway.{'\n'}
+                            Please wait while we confirm this payment.{'\n'}
+                            Do not press back or close the app.
                         </Text>
                         <View style={styles.verificationInfo}>
                             <TablerIcon
@@ -1088,8 +1098,8 @@ const Checkout: React.FC = (props: any) => {
                             </Text>
                         </View>
                     </View>
-                </SafeAreaView>
-            </Modal>
+                </View>
+            ) : null}
         </SafeAreaView>
     );
 };
@@ -1549,8 +1559,11 @@ const styles = StyleSheet.create({
     },
 
     verificationScreen: {
-        flex: 1,
+        ...StyleSheet.absoluteFillObject,
+        zIndex: 40,
+        elevation: 24,
         backgroundColor: '#FFFFFF',
+        justifyContent: 'center',
     },
     verificationContent: {
         flex: 1,

@@ -20,11 +20,14 @@ export const ThirdParty = {
     placesApiKey: 'AIzaSyClCQ_htPKkUayS7yWuY9kNj54gIQSnXiE',
   },
 
-  /** Cashfree (client App ID; secret optional for Get Payments) */
+  /**
+   * Cashfree checkout environment must match the account that created
+   * payment_session_id. Book-slot orders are live (same as the website).
+   */
   cashfree: {
     appId: 'TEST11316999e2fd8b8aca2f940e69d699961311',
     appSecret: '',
-    environment: 'SANDBOX' as 'SANDBOX' | 'PRODUCTION',
+    environment: 'PRODUCTION' as 'SANDBOX' | 'PRODUCTION',
     allowClientCreateOrder: false,
     allowedPaymentMethods: 'cc,dc,nb,upi,app,emi,paylater',
   },

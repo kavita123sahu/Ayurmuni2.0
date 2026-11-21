@@ -1805,7 +1805,7 @@ const DoctorDetail = ({ data, refreshData, navigation, token, onOpenChat }: Prop
         </View>
 
         <View style={styles.heroActions}>
-          {canJoin && (
+          {canJoin && appointmentStatusKey === 'confirmed' && (
             <PrimaryButton
               title={isLive ? 'Join Video Call · Live' : 'Join Video Call'}
               page="appoint"
