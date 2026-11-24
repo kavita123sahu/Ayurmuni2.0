@@ -26,7 +26,8 @@
 //         // on loading if the native sheet is slow or fails to present.
 //         setIsPaying(false);
 
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { AppState } from 'react-native';
 import { showSuccessToast } from '../config/Key';
 import { Colors } from '../common/Colors';
 import {
@@ -163,6 +164,23 @@ export const useProductOnlinePayment = () => {
   const [isPaying, setIsPaying] = useState(false);
   const [isVerifyingPayment, setIsVerifyingPayment] = useState(false);
   const paymentStartedRef = useRef(false);
+  /** True while the native gateway is open. App resume should show verification. */
+  const gatewayOpenRef = useRef(false);
+  const leftAppDuringGatewayRef = useRef(false);
+
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', next => {
+      if (!gatewayOpenRef.current) return;
+      if (next === 'background' || next === 'inactive') {
+        leftAppDuringGatewayRef.current = true;
+        return;
+      }
+      if (next === 'active' && leftAppDuringGatewayRef.current) {
+        setIsVerifyingPayment(true);
+      }
+    });
+    return () => sub.remove();
+  }, []);
 
   const payOnline = useCallback(
     async ({
@@ -201,6 +219,19 @@ export const useProductOnlinePayment = () => {
         prepaidAmount ??
           Math.max(0, subtotal + (Number(shippingFee) || 0) - (Number(couponDiscount) || 0)),
       );
+
+      const showVerification = () => {
+        setIsVerifyingPayment(true);
+      };
+      const stopVerification = () => {
+        gatewayOpenRef.current = false;
+        leftAppDuringGatewayRef.current = false;
+        setIsVerifyingPayment(false);
+      };
+      const armGatewayReturn = () => {
+        leftAppDuringGatewayRef.current = false;
+        gatewayOpenRef.current = true;
+      };
 
       try {
         setIsPaying(true);
@@ -346,6 +377,7 @@ export const useProductOnlinePayment = () => {
 
           // Clear loader before native sheet so UI is not stuck if SDK is slow
           setIsPaying(false);
+          armGatewayReturn();
 
           let nativeOpenFailed: any = null;
           if (isPayphiNativeLinked() && appInfo && payRequest) {
@@ -358,6 +390,7 @@ export const useProductOnlinePayment = () => {
                 payphiResult.status === 'cancelled'
               ) {
                 console.warn('[PAY] icici cancelled', payphiResult);
+                stopVerification();
                 if (payphiResult?.message) {
                   showSuccessToast(payphiResult.message, 'error');
                 }
@@ -365,6 +398,7 @@ export const useProductOnlinePayment = () => {
               }
               if (payphiResult.status === 'failed') {
                 console.warn('[PAY] icici failed', payphiResult);
+                stopVerification();
                 showSuccessToast(
                   payphiResult.message || String(payphiResult.raw ?? ''),
                   'error',
@@ -372,11 +406,14 @@ export const useProductOnlinePayment = () => {
                 return;
               }
 
+              showVerification();
+
               const merchantTxnNo = resolveIciciMerchantTxnNo(
                 paymentData,
                 payphiResult.gatewayOrderId || payRequest.merchantTxnNo,
               );
               if (!paymentData?.payment_id || !merchantTxnNo) {
+                stopVerification();
                 showSuccessToast(
                   'ICICI verify failed: missing payment_id or gateway_order_id.',
                   'error',
@@ -388,7 +425,7 @@ export const useProductOnlinePayment = () => {
                 String(payphiResult.gatewayPaymentId || '').trim() ||
                 merchantTxnNo;
 
-              setIsVerifyingPayment(true);
+              showVerification();
               // Same 4-key body as docs; signature = txn id (not PayPhi secureHash)
               const verifyBody = buildIciciVerifyPayload({
                 paymentId: String(paymentData.payment_id),
@@ -443,16 +480,18 @@ export const useProductOnlinePayment = () => {
                 }
               }
 
-              setIsVerifyingPayment(false);
               console.warn('[PAY] icici product verify', verifyResponse);
 
               if (verifyResponse?.success) {
+                gatewayOpenRef.current = false;
+                leftAppDuringGatewayRef.current = false;
                 finishSuccess(verifyResponse, {
                   gateway_payment_id: txnPaymentId,
                   payment_gateway: 'icici',
                 });
                 return;
               }
+              stopVerification();
               if (payphiResult.status === 'pending') {
                 console.warn('[PAY] icici pending', payphiResult);
                 showSuccessToast(
@@ -477,6 +516,7 @@ export const useProductOnlinePayment = () => {
             }
           }
 
+          stopVerification();
           console.warn('[PAY] icici product stop', {
             code: nativeOpenFailed?.code,
             message: nativeOpenFailed?.message,
@@ -524,10 +564,16 @@ export const useProductOnlinePayment = () => {
           }
 
           setIsPaying(false);
-          const cfResult = await openCashfreePayment(cfSession);
+          armGatewayReturn();
+          const cfResult = await openCashfreePayment(cfSession, {
+            onReturned: status => {
+              if (status === 'success') showVerification();
+            },
+          });
           console.warn('ONLINE_CASHFREE_RESULT =>', cfResult);
 
           if (cfResult.status === 'cancelled') {
+            stopVerification();
             showSuccessToast(
               cfResult.message || 'Payment cancelled. You can try again anytime.',
               'error',
@@ -535,12 +581,15 @@ export const useProductOnlinePayment = () => {
             return;
           }
           if (cfResult.status === 'failed') {
+            stopVerification();
             showSuccessToast(
               cfResult.message || 'Cashfree payment failed',
               'error',
             );
             return;
           }
+
+          showVerification();
 
           const cfOrderId =
             String(paymentData?.gateway_order_id || '').trim() ||
@@ -562,7 +611,7 @@ export const useProductOnlinePayment = () => {
             });
           }
 
-          setIsVerifyingPayment(true);
+          showVerification();
           let verifyBody;
           try {
             verifyBody = buildCashfreeVerifyPayload({
@@ -572,7 +621,7 @@ export const useProductOnlinePayment = () => {
               gatewaySignature: cfGatewayPaymentId,
             });
           } catch (buildError: any) {
-            setIsVerifyingPayment(false);
+            stopVerification();
             showSuccessToast(
               buildError?.message || 'Unable to build Cashfree verify payload.',
               'error',
@@ -591,15 +640,16 @@ export const useProductOnlinePayment = () => {
             verifyResponse =
               verifyError?.response ?? verifyError?.data ?? verifyError;
           }
-          setIsVerifyingPayment(false);
-
           if (verifyResponse?.success) {
+            gatewayOpenRef.current = false;
+            leftAppDuringGatewayRef.current = false;
             finishSuccess(verifyResponse, {
               cashfree_order_id: cfResult.orderId,
               payment_gateway: 'cashfree',
             });
             return;
           }
+          stopVerification();
           showSuccessToast(
             verifyResponse?.message ||
               'Cashfree received the payment. The server still needs to confirm this order.',
@@ -644,6 +694,7 @@ export const useProductOnlinePayment = () => {
         );
 
         let razorpayResult: any;
+        armGatewayReturn();
         try {
           razorpayResult = await openRazorpayPayment({
             key: razorpayKey,
@@ -659,6 +710,7 @@ export const useProductOnlinePayment = () => {
           });
         } catch (error: any) {
           console.log('ONLINE_RAZORPAY_CATCH =>', error);
+          stopVerification();
           if (isRazorpayUserCancelled(error)) {
             showSuccessToast(
               'Payment cancelled. You can try again anytime.',
@@ -675,7 +727,7 @@ export const useProductOnlinePayment = () => {
           setIsPaying(false);
         }
 
-        setIsVerifyingPayment(true);
+        showVerification();
 
         const gatewayOrderId = razorpayResult?.razorpay_order_id || razorpayOrderId;
         const verifyBody: Record<string, any> = {
@@ -701,15 +753,16 @@ export const useProductOnlinePayment = () => {
             verifyError?.response ?? verifyError?.data ?? verifyError;
         }
 
-        setIsVerifyingPayment(false);
-
         if (isPrepaidVerifyAcceptable(verifyResponse, razorpayResult)) {
+          gatewayOpenRef.current = false;
+          leftAppDuringGatewayRef.current = false;
           finishSuccess(verifyResponse, {
             razorpay_payment_id: razorpayResult?.razorpay_payment_id,
           });
           return;
         }
 
+        stopVerification();
         showSuccessToast(
           formatOrderStockError(verifyResponse?.message) ||
             verifyResponse?.message ||
@@ -718,7 +771,7 @@ export const useProductOnlinePayment = () => {
         );
       } catch (error: any) {
         console.log('ONLINE_PAYMENT_FATAL =>', error);
-        setIsVerifyingPayment(false);
+        stopVerification();
         if (isRazorpayUserCancelled(error)) {
           showSuccessToast(
             'Payment cancelled. You can try again anytime.',
