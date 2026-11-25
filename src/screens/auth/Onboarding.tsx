@@ -326,12 +326,6 @@ const Onboarding = (props: any) => {
             isValid = false;
         }
 
-        // LAST NAME — required for Complete Profile / backend identity
-        if (!formData.lastName.trim()) {
-            newErrors.lastName = 'Last name is required';
-            isValid = false;
-        }
-
         // EMAIL
         if (
             formData.email.trim() &&

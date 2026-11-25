@@ -633,6 +633,15 @@ export const createConsultationPayment = async (data: object) => {
         if (clean.payment_gateway != null) {
             clean.payment_gateway = toApiPaymentGateway(String(clean.payment_gateway));
         }
+        // Pay normally: force skip_package_funding and never send package_purchase_id
+        // so the server does not auto-fund from an active care plan.
+        if (
+            clean.skip_package_funding === true ||
+            String(clean.skip_package_funding).toLowerCase() === 'true'
+        ) {
+            clean.skip_package_funding = true;
+            delete clean.package_purchase_id;
+        }
         console.log('CONSULT_BOOK_PAYLOAD =>', JSON.stringify(clean, null, 2));
         const response = await apiClient('payments/customer/consultation/payment/book-slot/', {
             method: 'POST',
@@ -682,7 +691,12 @@ export const getConsultationFeeQuote = async (
         const code = String(couponCode || '').trim();
         if (code) url += `&coupon_code=${encodeURIComponent(code)}`;
         const purchaseId = String(packagePurchaseId || '').trim();
-        if (purchaseId) url += `&package_purchase_id=${encodeURIComponent(purchaseId)}`;
+        if (purchaseId) {
+            url += `&package_purchase_id=${encodeURIComponent(purchaseId)}`;
+        } else {
+            // No plan selected → ask server for full pay-normally quote (no package funding).
+            url += '&skip_package_funding=true';
+        }
         console.log('CONSULT_FEE_QUOTE_URL =>', url);
         const response = await apiClient(url, { method: 'GET' });
         console.log('CONSULT_FEE_QUOTE_RESPONSE =>', response);
@@ -690,6 +704,16 @@ export const getConsultationFeeQuote = async (
     } catch (error) {
         throw error;
     }
+};
+
+/** GET /payments/customer/consultation/payment/{payment_id}/ — webhook-enriched Cashfree ids. */
+export const getConsultationPayment = async (paymentId: string | number) => {
+    const id = encodeURIComponent(String(paymentId || '').trim());
+    if (!id) throw new Error('payment_id is required');
+    return apiClient(
+        `payments/customer/consultation/payment/${id}/`,
+        { method: 'GET' },
+    );
 };
 
 /**

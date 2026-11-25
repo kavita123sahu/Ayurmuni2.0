@@ -123,6 +123,7 @@ export type DietPlanListParams = {
     health_disease_id?: string | number;
     prakriti?: string;
     is_paid?: boolean | string;
+    is_purchased?: boolean | string;
     /** `active` | `completed` … — the patient's own assignment status. */
     patient_assignment_status?: string;
     /** `7`, `7-14` or `7+` */
@@ -147,6 +148,7 @@ const DIET_PLAN_QUERY_KEYS: (keyof DietPlanListParams)[] = [
     'health_disease_id',
     'prakriti',
     'is_paid',
+    'is_purchased',
     'patient_assignment_status',
     'duration',
     'duration_min',

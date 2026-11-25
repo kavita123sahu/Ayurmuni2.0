@@ -51,9 +51,14 @@ import {
 } from '../services/PayphiService';
 import {
   buildCashfreeVerifyPayload,
+  clearCashfreePending,
+  enrichCashfreeVerifyPayload,
+  harvestCashfreeGateway,
   openCashfreePayment,
   resolveCashfreeCheckout,
   resolveCashfreeCfPaymentId,
+  saveCashfreePending,
+  verifyCashfreeUntilSettled,
 } from '../services/CashfreeService';
 import * as _ORDER_SERVICES from '../services/OrderService';
 import {
@@ -563,6 +568,28 @@ export const useProductOnlinePayment = () => {
             return;
           }
 
+          const djangoPaymentIdPreview = String(
+            paymentData?.payment_id || cfSession.paymentId || '',
+          ).trim();
+          const cfOrderPreview =
+            String(paymentData?.gateway_order_id || '').trim() ||
+            cfSession.orderId;
+          if (djangoPaymentIdPreview && cfOrderPreview) {
+            await saveCashfreePending({
+              kind: 'order',
+              paymentId: djangoPaymentIdPreview,
+              orderId: String(cfOrderPreview),
+              sessionId: cfSession.paymentSessionId,
+              meta: {
+                order_id:
+                  paymentData?.order_id ||
+                  paymentData?.id ||
+                  paymentData?.order?.id ||
+                  '',
+              },
+            });
+          }
+
           setIsPaying(false);
           armGatewayReturn();
           const cfResult = await openCashfreePayment(cfSession, {
@@ -573,6 +600,7 @@ export const useProductOnlinePayment = () => {
           console.warn('ONLINE_CASHFREE_RESULT =>', cfResult);
 
           if (cfResult.status === 'cancelled') {
+            await clearCashfreePending();
             stopVerification();
             showSuccessToast(
               cfResult.message || 'Payment cancelled. You can try again anytime.',
@@ -581,6 +609,7 @@ export const useProductOnlinePayment = () => {
             return;
           }
           if (cfResult.status === 'failed') {
+            await clearCashfreePending();
             stopVerification();
             showSuccessToast(
               cfResult.message || 'Cashfree payment failed',
@@ -591,23 +620,27 @@ export const useProductOnlinePayment = () => {
 
           showVerification();
 
+          const harvested = harvestCashfreeGateway(
+            cfResult.raw || cfResult,
+            djangoPaymentIdPreview,
+          );
           const cfOrderId =
             String(paymentData?.gateway_order_id || '').trim() ||
+            harvested.gateway_order_id ||
             cfResult.orderId ||
             cfSession.orderId;
-          const djangoPaymentId = String(
-            paymentData?.payment_id || cfSession.paymentId || '',
-          ).trim();
+          const djangoPaymentId = djangoPaymentIdPreview;
 
-          let cfGatewayPaymentId = String(
-            cfResult.gatewayPaymentId || '',
-          ).trim();
+          let cfGatewayPaymentId =
+            harvested.gateway_payment_id ||
+            String(cfResult.gatewayPaymentId || '').trim();
           if (!/^\d{8,}$/.test(cfGatewayPaymentId)) {
             cfGatewayPaymentId = await resolveCashfreeCfPaymentId({
               orderId: cfOrderId,
               appId: cfSession.appId,
               appSecret: cfSession.appSecret,
               hintPaymentId: cfResult.gatewayPaymentId,
+              environment: cfSession.environment,
             });
           }
 
@@ -620,6 +653,7 @@ export const useProductOnlinePayment = () => {
               gatewayPaymentId: cfGatewayPaymentId,
               gatewaySignature: cfGatewayPaymentId,
             });
+            verifyBody = await enrichCashfreeVerifyPayload(verifyBody, []);
           } catch (buildError: any) {
             stopVerification();
             showSuccessToast(
@@ -631,16 +665,21 @@ export const useProductOnlinePayment = () => {
 
           let verifyResponse: any;
           try {
-            verifyResponse = await _ORDER_SERVICES.verifyOrderPayment({
-              ...verifyBody,
-              payment_gateway: 'cashfree',
-              cashfree_order_id: cfOrderId,
-            });
+            verifyResponse = await verifyCashfreeUntilSettled(
+              body =>
+                _ORDER_SERVICES.verifyOrderPayment({
+                  ...body,
+                  payment_gateway: 'cashfree',
+                  cashfree_order_id: cfOrderId,
+                }),
+              verifyBody,
+            );
           } catch (verifyError: any) {
             verifyResponse =
               verifyError?.response ?? verifyError?.data ?? verifyError;
           }
           if (verifyResponse?.success) {
+            await clearCashfreePending();
             gatewayOpenRef.current = false;
             leftAppDuringGatewayRef.current = false;
             finishSuccess(verifyResponse, {

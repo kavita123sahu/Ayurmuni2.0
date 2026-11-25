@@ -141,12 +141,13 @@ export const getSuggestedDietPlans = async (options?: DiseaseFilter) => {
   }
 };
 
-/** Browse diet plans when no disease selected (no filter params) */
+/** Browse diet plans when no disease selected (`type=all` catalog). */
 export const getDietPlansBrowse = async (options?: DiseaseFilter & {
   page_size?: number;
 }) => {
   try {
     const query = new URLSearchParams();
+    query.set('type', 'all');
     query.set('page_size', String(options?.page_size ?? 12));
     appendParam(query, 'health_disease_id', options?.health_disease_id);
     const response = await apiClient(

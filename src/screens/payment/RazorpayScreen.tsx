@@ -73,7 +73,13 @@ import {
 } from '../../services/PayphiService';
 import {
     buildCashfreeVerifyPayload,
+    clearCashfreePending,
+    enrichCashfreeVerifyPayload,
+    harvestCashfreeGateway,
     openCashfreePayment,
+    readCashfreePending,
+    saveCashfreePending,
+    verifyCashfreeUntilSettled,
     resolveCashfreeCheckout,
     resolveCashfreeCfPaymentId,
 } from '../../services/CashfreeService';
@@ -223,7 +229,19 @@ const pickConsultPaymentData = (response: any) => {
         summary: data.summary ?? response.summary,
         status: data.status ?? response.status,
         payment_status: data.payment_status ?? response.payment_status,
+        funded_by_package: data.funded_by_package ?? response.funded_by_package,
+        package_purchase_id:
+            data.package_purchase_id ?? response.package_purchase_id,
     };
+};
+
+/** True when book-slot/retry still attached package funding (pay-normally must reject this). */
+const responseUsesPackage = (response: any) => {
+    const paid = pickConsultPaymentData(response);
+    return (
+        paid?.funded_by_package === true ||
+        Boolean(paid?.package_purchase_id)
+    );
 };
 
 /** One-line summary of an API response for the payment debug logs. */
@@ -732,6 +750,74 @@ const RazorpayScreen = ({ route, navigation }: any) => {
         });
     };
 
+    // Resume Cashfree verify if the app was killed after a successful SDK return.
+    useFocusEffect(
+        React.useCallback(() => {
+            let cancelled = false;
+            (async () => {
+                if (loading || paymentStartedRef.current || isVerifyingPayment) {
+                    return;
+                }
+                const pending = await readCashfreePending();
+                if (
+                    !pending ||
+                    pending.kind !== 'consultation' ||
+                    !pending.paymentId ||
+                    !pending.orderId
+                ) {
+                    return;
+                }
+                const slotMatch =
+                    !pending.meta?.slot_id ||
+                    String(pending.meta.slot_id) === String(slotId?.id || '');
+                if (!slotMatch) return;
+
+                setIsVerifyingPayment(true);
+                try {
+                    let verifyPayload: Record<string, any> =
+                        buildCashfreeVerifyPayload({
+                            paymentId: pending.paymentId,
+                            orderId: pending.orderId,
+                            gatewayPaymentId: '',
+                        });
+                    verifyPayload = await enrichCashfreeVerifyPayload(
+                        verifyPayload,
+                        [
+                            () =>
+                                _CONSULT_SERVICES.getConsultationPayment(
+                                    pending.paymentId,
+                                ),
+                        ],
+                    );
+                    if (cancelled) return;
+                    const verifyResponse = await verifyCashfreeUntilSettled(
+                        body =>
+                            _CONSULT_SERVICES.verifyConsultationPayment(
+                                body as any,
+                            ),
+                        verifyPayload,
+                    );
+                    if (cancelled) return;
+                    if (verifyResponse?.success) {
+                        await clearCashfreePending();
+                        await onBookingSuccess(
+                            verifyResponse?.data,
+                            slotId?.id,
+                            'Payment Successful',
+                        );
+                    }
+                } catch (error) {
+                    console.warn('[PAY] cashfree pending resume failed', error);
+                } finally {
+                    if (!cancelled) setIsVerifyingPayment(false);
+                }
+            })();
+            return () => {
+                cancelled = true;
+            };
+        }, [loading, isVerifyingPayment, slotId?.id]),
+    );
+
     const handlePayment = async () => {
         if (loading || paymentStartedRef.current) return;
 
@@ -807,14 +893,16 @@ const RazorpayScreen = ({ route, navigation }: any) => {
                     const retryGateway = String(
                         retryData?.payment_gateway ?? retryData?.gateway ?? '',
                     ).toLowerCase();
-                    // Backend ignored payment_gateway and returned another gateway → book-slot fresh
+                    // Backend ignored payment_gateway / attached a package → book-slot fresh
                     if (
                         !isApiSuccess(paymentResponse) ||
+                        responseUsesPackage(paymentResponse) ||
                         (retryGateway && retryGateway !== apiGateway)
                     ) {
-                        console.warn('[PAY] 2. retry gateway mismatch — clear & book-slot', {
+                        console.warn('[PAY] 2. retry rejected — clear & book-slot', {
                             selected: apiGateway,
                             returned: retryGateway,
+                            usesPackage: responseUsesPackage(paymentResponse),
                         });
                         await clearPendingConsultPayment(currentSlotId);
                         paymentResponse = null;
@@ -836,6 +924,8 @@ const RazorpayScreen = ({ route, navigation }: any) => {
                             medical_record_ids: medical_record_ids,
                             coupon_code: appliedCoupon?.code,
                             payment_gateway: apiGateway,
+                            // Explicit pay-normally — strip any server-side plan funding.
+                            skip_package_funding: true,
                         });
                     logPayStep('2. book-slot', paymentResponse);
 
@@ -859,6 +949,15 @@ const RazorpayScreen = ({ route, navigation }: any) => {
                         }
                     }
                 }
+            }
+
+            if (!planPurchaseId && responseUsesPackage(paymentResponse)) {
+                await clearPendingConsultPayment(currentSlotId);
+                showSuccessToast(
+                    'Normal payment was not started. Please try again.',
+                    'error',
+                );
+                return;
             }
 
             if (!isApiSuccess(paymentResponse)) {
@@ -1094,16 +1193,37 @@ const RazorpayScreen = ({ route, navigation }: any) => {
                     return;
                 }
 
+                const djangoPaymentId = String(
+                    paymentData?.payment_id || cfSession.paymentId || '',
+                );
+                const cfOrderIdPreview =
+                    String(paymentData?.gateway_order_id || '').trim() ||
+                    cfSession.orderId;
+
                 console.warn('[PAY] cashfree start', {
-                    orderId: cfSession.orderId,
-                    paymentId: paymentData?.payment_id || cfSession.paymentId,
+                    orderId: cfOrderIdPreview,
+                    paymentId: djangoPaymentId,
                     env: cfSession.environment,
                 });
+
+                if (djangoPaymentId && cfOrderIdPreview) {
+                    await saveCashfreePending({
+                        kind: 'consultation',
+                        paymentId: djangoPaymentId,
+                        orderId: cfOrderIdPreview,
+                        sessionId: cfSession.paymentSessionId,
+                        meta: {
+                            appointment_id: appointmentId,
+                            slot_id: currentSlotId,
+                        },
+                    });
+                }
 
                 const cfResult = await openCashfreePayment(cfSession);
                 console.warn('[PAY] cashfree result', cfResult);
 
                 if (cfResult.status === 'cancelled') {
+                    await clearCashfreePending();
                     showSuccessToast(
                         cfResult.message ||
                             'Payment cancelled. You can try again anytime.',
@@ -1112,6 +1232,7 @@ const RazorpayScreen = ({ route, navigation }: any) => {
                     return;
                 }
                 if (cfResult.status === 'failed') {
+                    await clearCashfreePending();
                     showSuccessToast(
                         cfResult.message || 'Cashfree payment failed',
                         'error',
@@ -1119,9 +1240,6 @@ const RazorpayScreen = ({ route, navigation }: any) => {
                     return;
                 }
 
-                const djangoPaymentId = String(
-                    paymentData?.payment_id || cfSession.paymentId || '',
-                );
                 if (!djangoPaymentId) {
                     showSuccessToast(
                         'Cashfree paid, but payment_id missing for verify. Check My Appointments.',
@@ -1130,36 +1248,56 @@ const RazorpayScreen = ({ route, navigation }: any) => {
                     return;
                 }
 
+                const harvested = harvestCashfreeGateway(
+                    cfResult.raw || cfResult,
+                    djangoPaymentId,
+                );
                 const cfOrderId =
                     String(paymentData?.gateway_order_id || '').trim() ||
+                    harvested.gateway_order_id ||
                     cfResult.orderId ||
                     cfSession.orderId;
 
-                let cfGatewayPaymentId = String(
-                    cfResult.gatewayPaymentId || '',
-                ).trim();
+                let cfGatewayPaymentId =
+                    harvested.gateway_payment_id ||
+                    String(cfResult.gatewayPaymentId || '').trim();
                 if (!/^\d{8,}$/.test(cfGatewayPaymentId)) {
                     cfGatewayPaymentId = await resolveCashfreeCfPaymentId({
                         orderId: cfOrderId,
                         appId: cfSession.appId,
                         appSecret: cfSession.appSecret,
                         hintPaymentId: cfResult.gatewayPaymentId,
+                        environment: cfSession.environment,
                     });
                 }
 
                 setIsVerifyingPayment(true);
                 let verifyResponse;
                 try {
-                    // Exact body — no payment_gateway, no session_ ids
-                    verifyResponse =
-                        await _CONSULT_SERVICES.verifyConsultationPayment(
-                            buildCashfreeVerifyPayload({
-                                paymentId: djangoPaymentId,
-                                orderId: cfOrderId,
-                                gatewayPaymentId: cfGatewayPaymentId,
-                                gatewaySignature: cfGatewayPaymentId,
-                            }),
-                        );
+                    let verifyPayload: Record<string, any> =
+                        buildCashfreeVerifyPayload({
+                            paymentId: djangoPaymentId,
+                            orderId: cfOrderId,
+                            gatewayPaymentId: cfGatewayPaymentId,
+                            gatewaySignature: cfGatewayPaymentId,
+                        });
+                    // Webhook may land cf_payment_id on the payment row after checkout.
+                    verifyPayload = await enrichCashfreeVerifyPayload(
+                        verifyPayload,
+                        [
+                            () =>
+                                _CONSULT_SERVICES.getConsultationPayment(
+                                    djangoPaymentId,
+                                ),
+                        ],
+                    );
+                    verifyResponse = await verifyCashfreeUntilSettled(
+                        body =>
+                            _CONSULT_SERVICES.verifyConsultationPayment(
+                                body as any,
+                            ),
+                        verifyPayload,
+                    );
                 } catch (verifyError: any) {
                     setIsVerifyingPayment(false);
                     showSuccessToast(
@@ -1173,6 +1311,7 @@ const RazorpayScreen = ({ route, navigation }: any) => {
                 setIsVerifyingPayment(false);
 
                 if (verifyResponse?.success) {
+                    await clearCashfreePending();
                     await onBookingSuccess(
                         verifyResponse?.data,
                         currentSlotId,

@@ -54,6 +54,7 @@ export const LIST_STACK_SCREENS = new Set([
   'OrangeLabScreen',
   'PackagesScreen',
   'MyPlansScreen',
+  'MyDietsScreen',
   'Notifications',
   'PatientFAQ',
   'MedicalHistory',

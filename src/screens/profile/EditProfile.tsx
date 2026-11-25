@@ -232,10 +232,6 @@ const EditProfile = ({
             showSuccessToast('First name is required', 'error');
             return;
         }
-        if (!lastName) {
-            showSuccessToast('Last name is required', 'error');
-            return;
-        }
 
         try {
 
@@ -455,7 +451,6 @@ const EditProfile = ({
                                     }
                                 >
                                     Last Name
-                                    <Text style={styles.requiredMark}> *</Text>
                                 </Text>
 
                                 <View

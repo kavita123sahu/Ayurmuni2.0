@@ -48,6 +48,8 @@ import DietPlanActionPanel from '../../components/DietPlanActionPanel';
 import DietPlanCard from '../../components/DietPlanCard';
 import HydrationCard from '../../components/HydrationCard';
 import WaterGoalStartModal from '../../components/WaterGoalStartModal';
+import DietPaymentSheet from '../../components/DietPaymentSheet';
+import { useDietPurchase } from '../../hooks/useDietPurchase';
 import { formatRupee } from '../../utils/currencyUtils';
 import { showSuccessToast } from '../../config/Key';
 import { DIET_UI, SCREEN } from '../../constants/responsive';
@@ -796,6 +798,35 @@ const DietScreen = (props: any) => {
     [selectPlan],
   );
 
+  const purchasePlanId = String(
+    selectedPlanId ||
+      planDetail?.diet_plan_id ||
+      planDetail?.id ||
+      '',
+  ).trim();
+  const purchasePlan = selectedSummary || planDetail;
+  const dietPurchase = useDietPurchase({
+    plan: purchasePlan,
+    planId: purchasePlanId,
+    status: listStatus || 'not_started',
+    startPlan,
+    onStarted: () => {
+      setBrowseDetailMode(false);
+      setSwitchConflict(null);
+    },
+    onConflict: payload => {
+      openActiveConflict(
+        'start',
+        {
+          name: payload.activeName,
+          patient_diet_plan_id: payload.activeId,
+          id: payload.activePlanId,
+        },
+        payload.catalogId,
+      );
+    },
+  });
+
   const onPlanCardPress = useCallback(
     (item: any) => {
       const planId = String(item?.id || '').trim();
@@ -869,50 +900,35 @@ const DietScreen = (props: any) => {
       const pending = pendingStartRef.current;
       pendingStartRef.current = null;
       setStartWaterModalVisible(false);
+      const options = { daily_water_intake_goal: goalMl };
 
       if (pending?.mode === 'switch' && pending.activeId && pending.catalogId) {
-        const ok = await pauseActiveAndStart(
-          pending.activeId,
-          pending.catalogId,
-          goalMl,
+        const activeId = pending.activeId;
+        const catalogId = pending.catalogId;
+        const result = await dietPurchase.begin(
+          options,
+          async (_id, opts) => {
+            const ok = await pauseActiveAndStart(
+              activeId,
+              catalogId,
+              opts?.daily_water_intake_goal ?? goalMl,
+            );
+            return ok;
+          },
         );
-        if (ok) {
+        if (result === true) {
           setSwitchConflict(null);
           setBrowseDetailMode(false);
         }
         return;
       }
 
-      const catalogId = String(
-        pending?.catalogId ||
-        selectedPlanId ||
-        planDetail?.diet_plan_id ||
-        planDetail?.id ||
-        '',
-      );
-      const result = await startPlan(catalogId, {
-        daily_water_intake_goal: goalMl,
-      });
-      if (result && typeof result === 'object' && result.conflict === true) {
-        openActiveConflict(
-          'start',
-          result.activePlan || activePlan,
-          catalogId,
-        );
-        return;
-      }
+      const result = await dietPurchase.begin(options);
       if (result === true) {
         setBrowseDetailMode(false);
       }
     },
-    [
-      pauseActiveAndStart,
-      startPlan,
-      selectedPlanId,
-      planDetail,
-      activePlan,
-      openActiveConflict,
-    ],
+    [pauseActiveAndStart, dietPurchase],
   );
 
   const onConfirmSwitchPlan = useCallback(async () => {
@@ -1760,24 +1776,28 @@ const DietScreen = (props: any) => {
                 <TouchableOpacity
                   style={styles.startBtn}
                   onPress={onStartPress}
-                  disabled={starting || updatingStatus}
+                  disabled={starting || updatingStatus || dietPurchase.busy}
                   activeOpacity={0.9}
                 >
-                  {starting || updatingStatus ? (
+                  {starting || updatingStatus || dietPurchase.busy ? (
                     <ActivityIndicator color="#fff" />
                   ) : (
                     <Text style={styles.startBtnText}>
                       {activePlan &&
                         String(activePlan.id) !== String(selectedPlanId)
                         ? 'Pause active & start'
-                        : 'Start plan'}
+                        : dietPurchase.requiresPayment
+                          ? 'Buy & start'
+                          : 'Start plan'}
                     </Text>
                   )}
                 </TouchableOpacity>
                 <Text style={styles.startHint}>
                   {activePlan && String(activePlan.id) !== String(selectedPlanId)
-                    ? `"${activePlan.name}" is active now. Tap above to pause it and start this plan — only one diet can be active.`
-                    : 'After starting, you’ll track today’s meals and nutrition from this plan.'}
+                    ? `"${activePlan.name}" is active now. Tap above to pause it and start this plan ? only one diet can be active.`
+                    : dietPurchase.requiresPayment
+                      ? 'Pay once with Cashfree, then this plan starts and you can track meals.'
+                      : 'After starting, you?ll track today?s meals and nutrition from this plan.'}
                 </Text>
               </>
             ) : (
@@ -1871,19 +1891,24 @@ const DietScreen = (props: any) => {
         <WaterGoalStartModal
           visible={startWaterModalVisible}
           planName={selectedSummary?.name || planDetail?.name}
-          loading={starting || updatingStatus}
+          loading={starting || updatingStatus || dietPurchase.busy}
           onClose={() => {
-            if (starting || updatingStatus) return;
+            if (starting || updatingStatus || dietPurchase.busy) return;
             pendingStartRef.current = null;
             setStartWaterModalVisible(false);
           }}
           onConfirm={executeStartWithWaterGoal}
         />
+        <DietPaymentSheet
+          review={dietPurchase.review}
+          onPay={dietPurchase.pay}
+          onClose={dietPurchase.closeReview}
+        />
       </SafeAreaView>
     );
   }
 
-  // —— TRACKING (active / started) ——
+  // ?? TRACKING (active / started) ??
 
   // —— ACTIVE TRACKING (original Daily Vitality UI) ——
   return (

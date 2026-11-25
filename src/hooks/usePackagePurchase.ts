@@ -26,6 +26,11 @@ import {
   resolveCashfreeCheckout,
   resolveCashfreeCfPaymentId,
   buildCashfreeVerifyPayload,
+  clearCashfreePending,
+  enrichCashfreeVerifyPayload,
+  harvestCashfreeGateway,
+  saveCashfreePending,
+  verifyCashfreeUntilSettled,
 } from '../services/CashfreeService';
 import {
   openPayphiPayment,
@@ -100,8 +105,16 @@ export const usePackagePurchase = (navigation: any) => {
         try {
           if (gatewayUsed === 'cashfree') {
             const cfSession = await resolveCashfreeCheckout(paymentSource);
+            await saveCashfreePending({
+              kind: 'package',
+              paymentId: djangoPaymentId || String(purchase.id),
+              orderId: String(cfSession.orderId || ''),
+              sessionId: cfSession.paymentSessionId,
+              meta: { purchase_id: purchase.id, package_id: plan.id },
+            });
             const cfResult = await openCashfreePayment(cfSession);
             if (cfResult.status === 'cancelled') {
+              await clearCashfreePending();
               showSuccessToast(
                 cfResult.message || 'Payment cancelled. You can try again anytime.',
                 'error',
@@ -109,29 +122,39 @@ export const usePackagePurchase = (navigation: any) => {
               return;
             }
             if (cfResult.status === 'failed') {
+              await clearCashfreePending();
               showSuccessToast(
                 cfResult.message || 'Cashfree payment failed',
                 'error',
               );
               return;
             }
-            const cfOrderId = String(cfSession.orderId || '');
-            const cfGatewayPaymentId = await resolveCashfreeCfPaymentId({
-              orderId: cfOrderId,
-              appId: cfSession.appId,
-              appSecret: cfSession.appSecret,
-              hintPaymentId: cfResult.gatewayPaymentId,
-              environment: cfSession.environment,
-            });
-            verifyPayload = {
-              ...verifyPayload,
-              ...buildCashfreeVerifyPayload({
-                paymentId: djangoPaymentId,
+            const harvested = harvestCashfreeGateway(
+              cfResult.raw || cfResult,
+              djangoPaymentId,
+            );
+            const cfOrderId =
+              harvested.gateway_order_id || String(cfSession.orderId || '');
+            let cfGatewayPaymentId =
+              harvested.gateway_payment_id ||
+              String(cfResult.gatewayPaymentId || '');
+            if (!/^\d{8,}$/.test(cfGatewayPaymentId)) {
+              cfGatewayPaymentId = await resolveCashfreeCfPaymentId({
                 orderId: cfOrderId,
-                gatewayPaymentId: cfGatewayPaymentId,
-                gatewaySignature: cfGatewayPaymentId,
-              }),
-            };
+                appId: cfSession.appId,
+                appSecret: cfSession.appSecret,
+                hintPaymentId: cfResult.gatewayPaymentId,
+                environment: cfSession.environment,
+              });
+            }
+            let cfVerify = buildCashfreeVerifyPayload({
+              paymentId: djangoPaymentId,
+              orderId: cfOrderId,
+              gatewayPaymentId: cfGatewayPaymentId,
+              gatewaySignature: cfGatewayPaymentId,
+            });
+            cfVerify = await enrichCashfreeVerifyPayload(cfVerify, []);
+            verifyPayload = { ...verifyPayload, ...cfVerify };
           } else if (gatewayUsed === 'icici') {
             const appInfo = parsePayphiAppInfo(paymentSource);
             const payRequest = parsePayphiPaymentRequest(paymentSource);
@@ -214,13 +237,17 @@ export const usePackagePurchase = (navigation: any) => {
           return;
         }
 
-        const verify: any = await verifyPackagePayment(verifyPayload);
+        const verify: any =
+          gatewayUsed === 'cashfree'
+            ? await verifyCashfreeUntilSettled(verifyPackagePayment, verifyPayload)
+            : await verifyPackagePayment(verifyPayload);
 
         if (!verify?.success) {
           showSuccessToast(verify?.message || 'Payment verification failed', 'error');
           return;
         }
 
+        await clearCashfreePending();
         invalidateActivePlans();
         showSuccessToast(verify?.message || 'Care plan activated', 'success');
         if (navigationRef.isReady()) {

@@ -1,4 +1,5 @@
 import { NativeModules, Platform } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   getCashfreeCredentials,
   ThirdParty,
@@ -583,4 +584,296 @@ export const buildCashfreeVerifyPayload = (args: {
         }
       : {}),
   };
+};
+
+/* -------------------------------------------------------------------------- */
+/*                     Verify enrichment / poll / pending                     */
+/* -------------------------------------------------------------------------- */
+
+const CASHFREE_PENDING_KEY = 'CASHFREE_PENDING_VERIFY';
+const PENDING_TTL_MS = 60 * 60 * 1000; // 1 hour
+
+const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+const statusValues = (response: any): string[] => {
+  const nodes = [
+    response,
+    response?.data,
+    response?.data?.payment,
+    response?.data?.order,
+    response?.data?.purchase,
+    response?.payment,
+    response?.order,
+  ].filter(node => node && typeof node === 'object');
+  return nodes.flatMap(node =>
+    [node.payment_status, node.order_status, node.status, node.purchase?.status]
+      .map(value => String(value || '').trim())
+      .filter(Boolean),
+  );
+};
+
+const isPaidStatus = (value: string) =>
+  /^(paid|success|captured|completed)$/i.test(value) ||
+  String(value).toUpperCase() === 'PAID';
+
+const isUnpaidStatus = (value: string) =>
+  /^(pending|created|initiated|active|failed|failure|user_dropped|cancelled|canceled|expired|terminated)$/i.test(
+    value,
+  );
+
+/** True when a verify-payment response says Cashfree settled the charge. */
+export const isCashfreePaymentVerified = (response: any) => {
+  if (!response || typeof response !== 'object') return false;
+  const statuses = statusValues(response);
+  const paid = statuses.some(isPaidStatus);
+  const unpaid = statuses.some(isUnpaidStatus);
+  if (unpaid && !paid) return false;
+  if (
+    response.success === false ||
+    response.success === 'false' ||
+    response.success === 0
+  ) {
+    return false;
+  }
+  if (paid) return true;
+  return (
+    response.success === true ||
+    response.success === 'true' ||
+    response.success === 1
+  );
+};
+
+/**
+ * Ask verify-payment until Cashfree / webhook has captured the order.
+ * gateway_payment_id is optional; payment_id + gateway_order_id are enough once settled.
+ */
+export const verifyCashfreeUntilSettled = async <T = any>(
+  verifyFn: (payload: Record<string, any>) => Promise<T>,
+  payload: Record<string, any>,
+  opts?: { attempts?: number; waitMs?: number },
+): Promise<T> => {
+  const attempts = opts?.attempts ?? 4;
+  const waitMs = opts?.waitMs ?? 1200;
+  let last: T | null = null;
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    last = await verifyFn(payload);
+    if (isCashfreePaymentVerified(last)) return last;
+    const pending = String((last as any)?.message || '')
+      .toLowerCase()
+      .includes('pending');
+    if (!pending || attempt === attempts - 1) return last;
+    await sleep(waitMs);
+  }
+  return last as T;
+};
+
+const normKey = (key: unknown) =>
+  String(key || '')
+    .toLowerCase()
+    .replace(/[_-]/g, '');
+
+const looksLikeSession = (value: string) =>
+  /^session[_-]/i.test(value) || value.startsWith('payment_session');
+
+const PAYMENT_RANK = [
+  'gatewaypaymentid',
+  'cfpaymentid',
+  'cashfreepaymentid',
+  'referenceid',
+  'transactionid',
+  'txnid',
+  'pgpaymentid',
+  'bankreference',
+  'authid',
+  'paymentid',
+];
+const ORDER_KEYS = new Set([
+  'gatewayorderid',
+  'cashfreeorderid',
+  'cforderid',
+  'orderid',
+]);
+const SIGN_KEYS = new Set([
+  'gatewaysignature',
+  'signature',
+  'txnsignature',
+  'paymentsignature',
+]);
+
+/**
+ * Pull gateway ids out of a Cashfree SDK result, API payment row, or nested payload.
+ * Prefers numeric cf_payment_id; never treats payment_session_id as a payment id.
+ */
+export const harvestCashfreeGateway = (
+  root: any,
+  internalPaymentId = '',
+): {
+  gateway_order_id: string;
+  gateway_payment_id: string;
+  gateway_signature: string;
+} => {
+  const found = {
+    gateway_order_id: '',
+    gateway_payment_id: '',
+    gateway_signature: '',
+  };
+  const internal = str(internalPaymentId);
+  let bestPaymentRank = 99;
+
+  const visit = (node: any, depth: number) => {
+    if (!node || typeof node !== 'object' || depth > 8) return;
+    Object.entries(node).forEach(([key, value]) => {
+      if (typeof value === 'string') {
+        const trimmed = value.trim();
+        if (
+          (trimmed.startsWith('{') && trimmed.endsWith('}')) ||
+          (trimmed.startsWith('[') && trimmed.endsWith(']'))
+        ) {
+          try {
+            visit(JSON.parse(trimmed), depth + 1);
+            return;
+          } catch {
+            /* keep raw */
+          }
+        }
+      }
+      const text = str(value);
+      const name = normKey(key);
+      if (!text) {
+        if (value && typeof value === 'object') visit(value, depth + 1);
+        return;
+      }
+      if (
+        !found.gateway_order_id &&
+        ORDER_KEYS.has(name) &&
+        !looksLikeSession(text)
+      ) {
+        found.gateway_order_id = text;
+      }
+      const rank = PAYMENT_RANK.indexOf(name);
+      const usablePayment =
+        rank !== -1 &&
+        rank < bestPaymentRank &&
+        text !== internal &&
+        !looksLikeSession(text) &&
+        text !== found.gateway_order_id &&
+        // Prefer numeric cf ids; also accept other gateway payment ids when present
+        (isCashfreePaymentId(text) || rank <= 5);
+      if (usablePayment) {
+        bestPaymentRank = rank;
+        found.gateway_payment_id = text;
+      }
+      if (!found.gateway_signature && SIGN_KEYS.has(name) && text.length > 8) {
+        found.gateway_signature = text;
+      }
+      if (value && typeof value === 'object') visit(value, depth + 1);
+    });
+  };
+
+  if (typeof root === 'string') {
+    try {
+      visit(JSON.parse(root), 0);
+    } catch {
+      /* not json */
+    }
+  } else {
+    visit(root, 0);
+  }
+  return found;
+};
+
+/**
+ * After checkout, webhook may store cf_payment_id on the payment row before
+ * the SDK surfaces it. Poll loaders (e.g. getConsultationPayment) when missing.
+ */
+export const enrichCashfreeVerifyPayload = async (
+  payload: Record<string, any>,
+  loaders: Array<() => Promise<any>> = [],
+) => {
+  if (str(payload?.gateway_payment_id)) return payload;
+  const internal = str(payload?.payment_id);
+  const reads = loaders.filter(load => typeof load === 'function');
+  if (!reads.length) return payload;
+
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    for (const load of reads) {
+      try {
+        const response = await load();
+        const found = harvestCashfreeGateway(response, internal);
+        if (!found.gateway_payment_id) continue;
+        return {
+          ...payload,
+          gateway_order_id:
+            str(payload?.gateway_order_id) || found.gateway_order_id,
+          gateway_payment_id: found.gateway_payment_id,
+          gateway_signature:
+            str(payload?.gateway_signature) ||
+            found.gateway_signature ||
+            (isCashfreePaymentId(found.gateway_payment_id)
+              ? found.gateway_payment_id
+              : ''),
+        };
+      } catch {
+        /* webhook may not have landed yet */
+      }
+    }
+    if (attempt < 4) await sleep(1200);
+  }
+  return payload;
+};
+
+export type CashfreePendingVerify = {
+  kind: 'consultation' | 'order' | 'package' | 'diet';
+  paymentId: string;
+  orderId: string;
+  sessionId?: string;
+  /** Extra ids for resume (purchase_id, order_id, appointment_id, dietPlanId, …) */
+  meta?: Record<string, string | number | null | undefined>;
+  savedAt: number;
+};
+
+/** Persist pending Cashfree verify before opening the SDK (crash / kill safety). */
+export const saveCashfreePending = async (
+  payload: Omit<CashfreePendingVerify, 'savedAt'>,
+) => {
+  try {
+    const row: CashfreePendingVerify = {
+      ...payload,
+      paymentId: str(payload.paymentId),
+      orderId: str(payload.orderId),
+      sessionId: str(payload.sessionId) || undefined,
+      savedAt: Date.now(),
+    };
+    if (!row.paymentId || !row.orderId) return;
+    await AsyncStorage.setItem(CASHFREE_PENDING_KEY, JSON.stringify(row));
+  } catch {
+    /* ignore quota */
+  }
+};
+
+export const readCashfreePending = async (): Promise<CashfreePendingVerify | null> => {
+  try {
+    const raw = await AsyncStorage.getItem(CASHFREE_PENDING_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== 'object') return null;
+    if (
+      !parsed.savedAt ||
+      Date.now() - Number(parsed.savedAt) > PENDING_TTL_MS
+    ) {
+      await AsyncStorage.removeItem(CASHFREE_PENDING_KEY);
+      return null;
+    }
+    return parsed as CashfreePendingVerify;
+  } catch {
+    return null;
+  }
+};
+
+export const clearCashfreePending = async () => {
+  try {
+    await AsyncStorage.removeItem(CASHFREE_PENDING_KEY);
+  } catch {
+    /* ignore */
+  }
 };

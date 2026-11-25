@@ -70,6 +70,7 @@ const accountMenu: MenuEntry[] = [
     { id: 1, title: 'My Orders', icon: 'receipt' },
     { id: 2, title: 'My Consultations', icon: 'calendar' },
     { id: 10, title: 'My Plans', icon: 'certificate' },
+    { id: 14, title: 'My Diets', icon: 'salad-filled' },
     { id: 3, title: 'Medical Records', icon: 'file-medical' },
     { id: 4, title: 'Patient Details', icon: 'users' },
     { id: 5, title: 'Saved Address', icon: 'map-pin' },
@@ -293,6 +294,9 @@ const ProfilePage = ({ navigation }: any) => {
                     break;
                 case 'My Plans':
                     openScreen('MyPlansScreen');
+                    break;
+                case 'My Diets':
+                    openScreen('MyDietsScreen');
                     break;
                 case 'Payments':
                     openScreen('PaymentsScreen');
