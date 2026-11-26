@@ -92,14 +92,12 @@ const DietPlanCard = ({ item, onPress }: Props) => {
       activeOpacity={0.88}
       onPress={() => onPress(item)}
     >
-      {/* ── Full-width cover image ── */}
       <View style={styles.coverWrap}>
         <Image
           source={resolveDietImage(item)}
           style={styles.coverImage}
           resizeMode="cover"
         />
-        {/* Dark gradient overlay so badges stay readable */}
         <LinearGradient
           colors={['rgba(0,0,0,0.28)', 'transparent']}
           style={styles.coverGradient}
@@ -119,22 +117,8 @@ const DietPlanCard = ({ item, onPress }: Props) => {
         <View style={styles.statusOverlay}>
           <PlanStatusPill item={item} />
         </View>
-
-        {/* Bottom-right: PRO badge */}
-        {!isFree && (
-          <LinearGradient
-            colors={['#C9A227', '#E8C77B']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.proBadge}
-          >
-            <TablerIcon name="star" size={9} color="#5E4200" />
-            <Text style={styles.proBadgeText}>PRO</Text>
-          </LinearGradient>
-        )}
       </View>
 
-      {/* ── Card body ── */}
       <View style={styles.cardBody}>
         <Text style={styles.planTitle} numberOfLines={2}>
           {item.name}
@@ -142,19 +126,18 @@ const DietPlanCard = ({ item, onPress }: Props) => {
 
         {!!subtitle && (
           <Text style={styles.planSubtitle} numberOfLines={1}>
-            {subtitle}
+            {subtitle.replace(/_/g, ' ')}
           </Text>
         )}
 
         {!!prakriti && (
           <View style={styles.prakritiBadge}>
             <Text style={styles.prakritiBadgeText} numberOfLines={1}>
-              {prakriti}
+              {prakriti.replace(/_/g, ' ')}
             </Text>
           </View>
         )}
 
-        {/* Footer row */}
         <View style={styles.footerRow}>
           <View style={styles.footerMeta}>
             {!!item.total_days && (
@@ -166,23 +149,22 @@ const DietPlanCard = ({ item, onPress }: Props) => {
                 </Text>
               </View>
             )}
-            <View style={styles.footerItem}>
-              <TablerIcon name="receipt" size={13} color="#94A3B8" />
-              {isFree ? (
-                <Text style={styles.footerText}>Free</Text>
-              ) : (
-                <RupeeAmount value={item.price} style={styles.footerText} />
-              )}
-            </View>
             {!!ratingText && (
               <View style={styles.footerItem}>
-                <View style={styles.footerRatingIcon}>
-                  <TablerIcon name="star-filled" size={12} color="#F59E0B" />
-                </View>
+                <TablerIcon name="star-filled" size={12} color="#E0A106" />
                 <Text style={styles.footerRatingText}>{ratingText}</Text>
               </View>
             )}
           </View>
+
+          <View style={styles.pricePill}>
+            {isFree ? (
+              <Text style={styles.priceText}>Free</Text>
+            ) : (
+              <RupeeAmount value={item.price} style={styles.priceText} />
+            )}
+          </View>
+
           <View style={styles.chevronBtn}>
             <TablerIcon name="chevron-right" size={16} color="#64748B" />
           </View>
@@ -224,7 +206,6 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
 
-  // Cover image — fills top edge-to-edge, no white gap
   coverWrap: {
     width: '100%',
     height: 96,
@@ -262,53 +243,37 @@ const styles = StyleSheet.create({
   },
   statusOverlay: {
     position: 'absolute',
-    top: 6,
-    right: 6,
-  },
-  proBadge: {
-    position: 'absolute',
-    bottom: 6,
-    right: 6,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
-    paddingHorizontal: 5,
-    paddingVertical: 2,
-    borderRadius: 7,
-  },
-  proBadgeText: {
-    fontSize: 9,
-    fontFamily: Fonts.PoppinsSemiBold,
-    color: '#5E4200',
-    letterSpacing: 0.4,
+    top: 8,
+    right: 8,
   },
 
   // Content below the image
   cardBody: {
-    paddingHorizontal: 10,
-    paddingTop: 8,
-    paddingBottom: 8,
+    paddingHorizontal: 14,
+    paddingTop: 12,
+    paddingBottom: 12,
   },
   planTitle: {
-    fontSize: 13,
-    lineHeight: 18,
+    fontSize: 15,
+    lineHeight: 21,
     fontFamily: Fonts.PoppinsSemiBold,
     color: '#0F172A',
   },
   planSubtitle: {
-    fontSize: 11,
-    lineHeight: 15,
+    fontSize: 12,
+    lineHeight: 16,
     fontFamily: Fonts.PoppinsRegular,
     color: '#64748B',
-    marginTop: 2,
+    marginTop: 4,
+    textTransform: 'capitalize',
   },
   prakritiBadge: {
     alignSelf: 'flex-start',
     backgroundColor: '#ECFDF5',
-    borderRadius: 6,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    marginTop: 4,
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    marginTop: 8,
   },
   prakritiBadgeText: {
     fontSize: 10,
@@ -321,11 +286,11 @@ const styles = StyleSheet.create({
   footerRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    marginTop: 6,
-    paddingTop: 6,
+    marginTop: 12,
+    paddingTop: 10,
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: '#EEF2F6',
+    borderTopColor: '#E8EEF2',
+    gap: 8,
   },
   footerMeta: {
     flex: 1,
@@ -338,15 +303,8 @@ const styles = StyleSheet.create({
   footerItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: 3,
-    minHeight: 14,
-  },
-  footerRatingIcon: {
-    width: 13,
-    height: 13,
-    alignItems: 'center',
-    justifyContent: 'center',
+    gap: 4,
+    minHeight: 16,
   },
   footerText: {
     fontSize: 11,
@@ -356,12 +314,24 @@ const styles = StyleSheet.create({
     includeFontPadding: false,
   },
   footerRatingText: {
-    fontSize: 11,
-    lineHeight: 14,
+    fontSize: 12,
+    lineHeight: 16,
     fontFamily: Fonts.PoppinsSemiBold,
-    color: '#B45309',
+    color: '#8A6A10',
     includeFontPadding: false,
-    textAlignVertical: 'center',
+  },
+  pricePill: {
+    backgroundColor: '#F3FAF7',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#D5EBE3',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  priceText: {
+    fontSize: 15,
+    fontFamily: Fonts.PoppinsSemiBold,
+    color: '#0D614E',
   },
   chevronBtn: {
     width: 24,

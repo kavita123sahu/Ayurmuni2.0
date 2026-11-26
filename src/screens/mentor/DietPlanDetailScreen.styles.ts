@@ -15,7 +15,7 @@ export const styles = StyleSheet.create({
   listContent: {
     paddingBottom: 40,
     paddingTop: SPACING.sm,
-    gap: SPACING.md,
+    gap: 16,
   },
 
   searchWrap: {
