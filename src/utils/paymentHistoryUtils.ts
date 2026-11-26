@@ -219,12 +219,40 @@ const REFUND_ELIGIBLE_STATUSES = new Set([
   'noshow',
 ]);
 
+/**
+ * Normalize payment.history statuses so timeline labels stay consistent.
+ * refund_initiated / refund_requested → refund_pending ("Refund initiated").
+ */
+export const normalizePaymentHistoryStatus = (status?: string | null): string => {
+  const value = String(status || '').trim().toLowerCase();
+  if (value === 'success' || value === 'captured') return 'paid';
+  if (
+    value === 'refunded' ||
+    value === 'refund_processed' ||
+    value === 'refund'
+  ) {
+    return 'refund_paid';
+  }
+  if (value === 'refund_requested' || value === 'refund_initiated') {
+    return 'refund_pending';
+  }
+  if (
+    value === 'refund_rejected' ||
+    value === 'refund_declined' ||
+    value === 'refund_denied' ||
+    value === 'rejected'
+  ) {
+    return 'refund_rejected';
+  }
+  return value;
+};
+
 const mapHistoryEntries = (list: any[]): PaymentHistoryEntry[] =>
   list
     .map((entry: any) => {
       const amountNum = Number(entry?.amount);
       return {
-        status: String(entry?.status || '').trim().toLowerCase(),
+        status: normalizePaymentHistoryStatus(entry?.status),
         amount: Number.isFinite(amountNum) ? amountNum : null,
         currency: String(entry?.currency || 'INR'),
         reason: entry?.reason ? String(entry.reason) : undefined,
@@ -311,7 +339,9 @@ export const getCompletedRefund = (
     ...getRefundHistory(...sources),
     ...getPaymentHistory(...sources),
   ];
-  const paid = [...history].reverse().find(e => e.status === 'refund_paid');
+  const paid = [...history]
+    .reverse()
+    .find(e => normalizePaymentHistoryStatus(e.status) === 'refund_paid');
   if (paid) {
     return {
       amount: paid.amount,
@@ -323,7 +353,7 @@ export const getCompletedRefund = (
   }
   const pending = [...history]
     .reverse()
-    .find(e => e.status === 'refund_pending');
+    .find(e => normalizePaymentHistoryStatus(e.status) === 'refund_pending');
   if (pending) {
     return {
       amount: pending.amount,
@@ -344,26 +374,40 @@ export const PAYMENT_STATUS_LABELS: Record<string, string> = {
   canceled: 'Appointment cancelled',
   missed: 'Appointment missed',
   refund_pending: 'Refund initiated',
+  refund_initiated: 'Refund initiated',
+  refund_requested: 'Refund initiated',
   refund_paid: 'Refund completed',
   refund_failed: 'Refund failed',
+  refund_rejected: 'Refund rejected',
 };
 
-export const formatPaymentStatusLabel = (status: string) =>
-  PAYMENT_STATUS_LABELS[status] ||
-  status.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+export const formatPaymentStatusLabel = (status: string) => {
+  const normalized = normalizePaymentHistoryStatus(status);
+  return (
+    PAYMENT_STATUS_LABELS[normalized] ||
+    PAYMENT_STATUS_LABELS[status] ||
+    String(status || '')
+      .replace(/_/g, ' ')
+      .replace(/\b\w/g, c => c.toUpperCase())
+  );
+};
 
 /** Tone used for the timeline dot / text. */
 export const getPaymentStatusTone = (
   status: string,
 ): 'success' | 'warning' | 'danger' | 'neutral' => {
-  if (status === 'paid' || status === 'refund_paid') return 'success';
-  if (status === 'refund_pending' || status === 'pending') return 'warning';
+  const normalized = normalizePaymentHistoryStatus(status);
+  if (normalized === 'paid' || normalized === 'refund_paid') return 'success';
+  if (normalized === 'refund_pending' || normalized === 'pending') {
+    return 'warning';
+  }
   if (
-    status === 'failed' ||
-    status === 'refund_failed' ||
-    status === 'cancelled' ||
-    status === 'canceled' ||
-    status === 'missed'
+    normalized === 'failed' ||
+    normalized === 'refund_failed' ||
+    normalized === 'refund_rejected' ||
+    normalized === 'cancelled' ||
+    normalized === 'canceled' ||
+    normalized === 'missed'
   ) {
     return 'danger';
   }

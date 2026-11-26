@@ -13,6 +13,10 @@ import { Fonts } from '../../common/Fonts';
 import { Colors } from '../../common/Colors';
 import TablerIcon, { TablerIconName } from '../../components/TablerIcon';
 import { formatRupee, RupeeAmount } from '../../utils/currencyUtils';
+import {
+  formatPaymentStatusLabel,
+  normalizePaymentHistoryStatus,
+} from '../../utils/paymentHistoryUtils';
 
 type Props = {
     route: any;
@@ -52,20 +56,25 @@ const formatDateTime = (value?: string | null) => {
 };
 
 const getStatusColor = (status?: string) => {
-    const normalized = String(status ?? '').toLowerCase();
-    if (normalized === 'success' || normalized === 'paid') return '#16A34A';
+    const normalized = normalizePaymentHistoryStatus(status);
+    if (normalized === 'paid') return '#16A34A';
     if (normalized === 'refund_paid') return '#16A34A';
-    if (normalized === 'failed' || normalized === 'refunded') return '#DC2626';
-    if (normalized === 'pending' || normalized === 'refund_pending') return '#F59E0B';
+    if (
+      normalized === 'failed' ||
+      normalized === 'refund_failed' ||
+      normalized === 'refund_rejected'
+    ) {
+      return '#DC2626';
+    }
+    if (normalized === 'pending' || normalized === 'refund_pending') {
+      return '#F59E0B';
+    }
     return '#64748B';
 };
 
 const getStatusLabel = (status?: string) => {
-    const normalized = String(status ?? '').toLowerCase();
-    if (normalized === 'success') return 'Paid';
     if (!status) return 'Unknown';
-    const text = status.replace(/_/g, ' ');
-    return text.charAt(0).toUpperCase() + text.slice(1);
+    return formatPaymentStatusLabel(status);
 };
 
 const TransactionDetailsScreen = ({ route, navigation }: Props) => {
