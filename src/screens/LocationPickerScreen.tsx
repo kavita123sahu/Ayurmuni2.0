@@ -15,7 +15,9 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { CommonActions, useNavigation, useRoute } from '@react-navigation/native';
 import AppHeader from '../components/AppHeader';
-import InteractiveMapPicker from '../components/InteractiveMapPicker';
+import InteractiveMapPicker, {
+  MapCenter,
+} from '../components/InteractiveMapPicker';
 import { Colors } from '../common/Colors';
 import { Fonts } from '../common/Fonts';
 import TablerIcon from '../components/TablerIcon';
@@ -28,6 +30,7 @@ import {
   getPlaceDetails,
   geocodePincode,
   enrichAddressWithPincode,
+  isAbortError,
   requestLocationPermission,
   reverseGeocode,
   searchPlaces,
@@ -57,7 +60,7 @@ const LocationPickerScreen = () => {
       ? deliveryLocation
       : null);
 
-  const [marker, setMarker] = useState<Coordinates>(
+  const [marker, setMarker] = useState<MapCenter>(
     initialCoords
       ? { latitude: initialCoords.latitude, longitude: initialCoords.longitude }
       : getDefaultRegion(),
@@ -80,10 +83,16 @@ const LocationPickerScreen = () => {
   const debouncedPincode = useDebounce(pincodeInput, 500);
   /** Once the user pans the map, ignore late GPS fixes that would yank the pin back. */
   const userPinnedRef = useRef(false);
+  const geocodeControllerRef = useRef<AbortController | null>(null);
+  const moveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const applyParsedAddress = useCallback((parsed: ParsedAddress) => {
+  const applyParsedAddress = useCallback((parsed: ParsedAddress, zoom?: number) => {
     setAddress(parsed);
-    setMarker({ latitude: parsed.latitude, longitude: parsed.longitude });
+    setMarker({
+      latitude: parsed.latitude,
+      longitude: parsed.longitude,
+      ...(typeof zoom === 'number' ? { zoom } : {}),
+    });
     if (parsed.zipcode) {
       const zip = parsed.zipcode.replace(/[^0-9]/g, '').slice(0, 6);
       setPincodeInput(zip);
@@ -95,21 +104,31 @@ const LocationPickerScreen = () => {
   }, []);
 
   /**
-   * User dragged / tapped the map — keep the pin exactly where they put it.
-   * Only refresh the address label from reverse-geocode (do not move the pin).
+   * Resolve address for coords. A newer call aborts the older request so
+   * map-drag geocode cannot overwrite a fresh GPS fix.
    */
   const updateLocation = useCallback(async (coords: Coordinates) => {
-    userPinnedRef.current = true;
-    setMarker(coords);
+    if (moveTimerRef.current) {
+      clearTimeout(moveTimerRef.current);
+      moveTimerRef.current = null;
+    }
+    geocodeControllerRef.current?.abort();
+    const controller = new AbortController();
+    geocodeControllerRef.current = controller;
+
     setGeocoding(true);
     setLocationError('');
     try {
-      const parsed = await reverseGeocode(coords);
-      const enriched = await enrichAddressWithPincode({
-        ...parsed,
-        latitude: coords.latitude,
-        longitude: coords.longitude,
-      });
+      const parsed = await reverseGeocode(coords, { signal: controller.signal });
+      if (controller.signal.aborted) return;
+      const enriched = parsed.zipcode
+        ? parsed
+        : await enrichAddressWithPincode({
+            ...parsed,
+            latitude: coords.latitude,
+            longitude: coords.longitude,
+          });
+      if (controller.signal.aborted) return;
       setAddress({
         ...enriched,
         latitude: coords.latitude,
@@ -125,19 +144,52 @@ const LocationPickerScreen = () => {
         }
       }
     } catch (error: any) {
+      if (controller.signal.aborted || isAbortError(error)) return;
       setLocationError(
         error?.message ||
         'Could not fetch address. Try search or move the map.',
       );
     } finally {
-      setGeocoding(false);
+      if (geocodeControllerRef.current === controller) {
+        setGeocoding(false);
+      }
     }
   }, []);
+
+  /** Map moves are debounced so dragging doesn't hammer the geocoder. */
+  const handleMapMove = useCallback(
+    (coords: Coordinates) => {
+      userPinnedRef.current = true;
+      setMarker(coords);
+      if (moveTimerRef.current) {
+        clearTimeout(moveTimerRef.current);
+      }
+      moveTimerRef.current = setTimeout(() => {
+        void updateLocation(coords);
+      }, 600);
+    },
+    [updateLocation],
+  );
+
+  useEffect(
+    () => () => {
+      if (moveTimerRef.current) clearTimeout(moveTimerRef.current);
+      geocodeControllerRef.current?.abort();
+    },
+    [],
+  );
 
   const loadCurrentLocation = useCallback(async () => {
     setLoading(true);
     setLocationError('');
     userPinnedRef.current = false;
+    // Cancel any pending map-drag geocode so it cannot overwrite GPS
+    if (moveTimerRef.current) {
+      clearTimeout(moveTimerRef.current);
+      moveTimerRef.current = null;
+    }
+    geocodeControllerRef.current?.abort();
+
     try {
       const granted = await requestLocationPermission();
       if (!granted) {
@@ -145,18 +197,32 @@ const LocationPickerScreen = () => {
         showLocationPermissionAlert();
         return;
       }
-      const coords = await getCurrentPosition();
+      const coords = await getCurrentPosition({
+        enableHighAccuracy: true,
+        maximumAge: 0,
+        timeout: 20000,
+      });
       // User already moved the pin while GPS was resolving — keep their choice
       if (userPinnedRef.current) return;
-      applyParsedAddress(
-        await enrichAddressWithPincode(await reverseGeocode(coords)),
-      );
+
+      // Zoom in so the GPS pin is clearly where you are (map enforces ≥17)
+      setMarker({
+        latitude: coords.latitude,
+        longitude: coords.longitude,
+        zoom: 18,
+      });
+      setLoading(false);
+      await updateLocation(coords);
     } catch (error: any) {
       if (userPinnedRef.current) return;
       const refreshed = await refreshCurrentLocation();
       if (refreshed) {
-        const enriched = await enrichAddressWithPincode(refreshed);
-        applyParsedAddress(enriched);
+        setMarker({
+          latitude: refreshed.latitude,
+          longitude: refreshed.longitude,
+          zoom: 18,
+        });
+        applyParsedAddress(await enrichAddressWithPincode(refreshed), 18);
       } else {
         const code = error?.code;
         if (code === 3) {
@@ -170,7 +236,7 @@ const LocationPickerScreen = () => {
     } finally {
       setLoading(false);
     }
-  }, [refreshCurrentLocation, applyParsedAddress]);
+  }, [refreshCurrentLocation, applyParsedAddress, updateLocation]);
 
   useEffect(() => {
     // Always prefer a fresh GPS fix when opening the picker so the map
@@ -373,7 +439,7 @@ const LocationPickerScreen = () => {
 
         <InteractiveMapPicker
           center={marker}
-          onCenterChange={updateLocation}
+          onCenterChange={handleMapMove}
           loading={loading}
         />
 

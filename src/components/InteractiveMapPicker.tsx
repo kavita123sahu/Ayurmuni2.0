@@ -4,17 +4,21 @@ import {
   StyleSheet,
   ActivityIndicator,
   Dimensions,
+  Text,
 } from 'react-native';
 import WebView, { WebViewMessageEvent } from 'react-native-webview';
 import { Colors } from '../common/Colors';
+import { Fonts } from '../common/Fonts';
 import { Coordinates } from '../services/locationService';
 import { buildMapHtml } from '../utils/mapHtml';
 
 const { width: SCREEN_W } = Dimensions.get('window');
 const MAP_HEIGHT = Math.min(SCREEN_W - 32, 380);
 
+export type MapCenter = Coordinates & { zoom?: number };
+
 type Props = {
-  center: Coordinates;
+  center: MapCenter;
   onCenterChange: (coords: Coordinates) => void;
   loading?: boolean;
 };
@@ -36,13 +40,69 @@ const InteractiveMapPicker: React.FC<Props> = ({
   const userMovedRef = useRef(false);
   const suppressEchoUntil = useRef(0);
   const externalMoveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const retryTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const mapReadyRef = useRef(false);
+  const pendingCenterRef = useRef<MapCenter | null>(null);
   const [mapHtml] = useState(() => buildMapHtml(center));
+
+  const clearRetry = useCallback(() => {
+    if (retryTimer.current) {
+      clearInterval(retryTimer.current);
+      retryTimer.current = null;
+    }
+  }, []);
+
+  const injectMove = useCallback((coords: MapCenter) => {
+    const zoomArg =
+      typeof coords.zoom === 'number' && coords.zoom > 0
+        ? String(coords.zoom)
+        : 'undefined';
+    webRef.current?.injectJavaScript(
+      `(function(){try{if(typeof window.moveMapTo==='function'){window.moveMapTo(${coords.latitude},${coords.longitude},${zoomArg});}}catch(e){} true;})();`,
+    );
+  }, []);
+
+  /**
+   * If the map iframe is still loading, retry moving the pin
+   * about every 150ms, up to 20 times. Zoom at least 17 (handled in map HTML).
+   */
+  const moveMapToWithRetry = useCallback(
+    (coords: MapCenter) => {
+      clearRetry();
+      suppressEchoUntil.current = Date.now() + 600;
+      userMovedRef.current = false;
+      pendingCenterRef.current = coords;
+
+      if (mapReadyRef.current) {
+        injectMove(coords);
+        return;
+      }
+
+      let tries = 0;
+      injectMove(coords);
+      retryTimer.current = setInterval(() => {
+        tries += 1;
+        injectMove(coords);
+        if (mapReadyRef.current || tries >= 20) {
+          clearRetry();
+        }
+      }, 150);
+    },
+    [clearRetry, injectMove],
+  );
 
   const handleMessage = useCallback(
     (event: WebViewMessageEvent) => {
       try {
         const data = JSON.parse(event.nativeEvent.data);
         if (data?.type === 'map_log') {
+          if (data.message === 'map_ready') {
+            mapReadyRef.current = true;
+            clearRetry();
+            if (pendingCenterRef.current) {
+              injectMove(pendingCenterRef.current);
+            }
+          }
           console.log('[MapPicker]', data.message, data.extra ?? '');
           return;
         }
@@ -63,27 +123,23 @@ const InteractiveMapPicker: React.FC<Props> = ({
         // ignore parse errors
       }
     },
-    [onCenterChange],
+    [clearRetry, injectMove, onCenterChange],
   );
-
-  const moveMapTo = useCallback((coords: Coordinates) => {
-    suppressEchoUntil.current = Date.now() + 500;
-    userMovedRef.current = false;
-    webRef.current?.injectJavaScript(
-      `window.moveMapTo(${coords.latitude}, ${coords.longitude}); true;`,
-    );
-  }, []);
 
   React.useEffect(() => {
     const dLat = Math.abs(center.latitude - lastCoords.current.latitude);
     const dLng = Math.abs(center.longitude - lastCoords.current.longitude);
     const moved = dLat > 0.00008 || dLng > 0.00008;
-    if (!moved) return;
+    const zoomChanged =
+      typeof center.zoom === 'number' &&
+      center.zoom !== (lastCoords.current as MapCenter).zoom;
+
+    if (!moved && !zoomChanged) return;
 
     // Tiny parent deltas after a drag are reverse-geocode / pincode echoes — ignore.
     // Large jumps (search / GPS / typed pincode) must still move the map.
     const isTinyEcho = dLat < 0.002 && dLng < 0.002; // ~200m
-    if (userMovedRef.current && isTinyEcho) {
+    if (userMovedRef.current && isTinyEcho && !zoomChanged) {
       lastCoords.current = center;
       return;
     }
@@ -92,7 +148,7 @@ const InteractiveMapPicker: React.FC<Props> = ({
       clearTimeout(externalMoveTimer.current);
     }
     externalMoveTimer.current = setTimeout(() => {
-      moveMapTo(center);
+      moveMapToWithRetry(center);
       lastCoords.current = center;
     }, 120);
 
@@ -101,15 +157,15 @@ const InteractiveMapPicker: React.FC<Props> = ({
         clearTimeout(externalMoveTimer.current);
       }
     };
-  }, [center.latitude, center.longitude, moveMapTo, center]);
+  }, [
+    center.latitude,
+    center.longitude,
+    center.zoom,
+    moveMapToWithRetry,
+    center,
+  ]);
 
-  if (loading) {
-    return (
-      <View style={[styles.container, { height: MAP_HEIGHT }]}>
-        <ActivityIndicator size="large" color={Colors.primaryColor} />
-      </View>
-    );
-  }
+  React.useEffect(() => () => clearRetry(), [clearRetry]);
 
   return (
     <View style={[styles.container, { height: MAP_HEIGHT }]}>
@@ -130,6 +186,12 @@ const InteractiveMapPicker: React.FC<Props> = ({
           </View>
         )}
       />
+      {loading ? (
+        <View style={styles.overlay} pointerEvents="none">
+          <ActivityIndicator size="large" color={Colors.primaryColor} />
+          <Text style={styles.overlayText}>Finding your location…</Text>
+        </View>
+      ) : null}
     </View>
   );
 };
@@ -154,5 +216,17 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: '#F1F5F9',
+  },
+  overlay: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(248, 250, 252, 0.72)',
+    gap: 8,
+  },
+  overlayText: {
+    fontSize: 13,
+    color: '#334155',
+    fontFamily: Fonts.PoppinsMedium,
   },
 });

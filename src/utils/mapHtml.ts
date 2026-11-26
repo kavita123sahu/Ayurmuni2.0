@@ -49,7 +49,7 @@ export const buildMapHtml = (center: Coordinates) => `<!DOCTYPE html>
   </div>
   <div class="pin-wrap"><div class="pin-dot"></div><div class="pin-stem"></div></div>
   <script>
-    let map, idleTimer, tileLayer;
+    let map, idleTimer, tileLayer, skipNextIdle = false;
     const startLat = ${center.latitude};
     const startLng = ${center.longitude};
 
@@ -74,6 +74,10 @@ export const buildMapHtml = (center: Coordinates) => `<!DOCTYPE html>
     }
 
     function onMapIdle() {
+      if (skipNextIdle) {
+        skipNextIdle = false;
+        return;
+      }
       clearTimeout(idleTimer);
       idleTimer = setTimeout(function() {
         if (!map) return;
@@ -99,7 +103,7 @@ export const buildMapHtml = (center: Coordinates) => `<!DOCTYPE html>
           zoomControl: true,
           attributionControl: true,
           maxZoom: 19,
-        }).setView([startLat, startLng], 18);
+        }).setView([startLat, startLng], 17);
 
         tileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
           maxZoom: 19,
@@ -116,7 +120,6 @@ export const buildMapHtml = (center: Coordinates) => `<!DOCTYPE html>
 
         tileLayer.addTo(map);
         map.on('moveend', onMapIdle);
-        map.on('zoomend', onMapIdle);
         postLocation(startLat, startLng);
         logMap('map_ready', { lat: startLat, lng: startLng });
       } catch (e) {
@@ -124,11 +127,16 @@ export const buildMapHtml = (center: Coordinates) => `<!DOCTYPE html>
       }
     }
 
-    window.moveMapTo = function(lat, lng) {
-      if (!map) return;
+    window.moveMapTo = function(lat, lng, zoom) {
+      if (!map) return false;
       // Programmatic move only — do not postLocation (avoids pin snap loops)
-      var z = Math.max(map.getZoom() || 18, 18);
-      map.setView([lat, lng], z, { animate: false });
+      skipNextIdle = true;
+      var nextZoom =
+        (typeof zoom === 'number' && zoom > 0)
+          ? zoom
+          : Math.max(map.getZoom() || 17, 17);
+      map.setView([lat, lng], nextZoom, { animate: true });
+      return true;
     };
 
     if (document.readyState === 'loading') {

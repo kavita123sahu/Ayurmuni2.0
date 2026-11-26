@@ -8,6 +8,8 @@ import {
 export type Coordinates = {
   latitude: number;
   longitude: number;
+  /** Horizontal accuracy in meters when from GPS */
+  accuracy?: number;
 };
 
 export type ParsedAddress = {
@@ -68,20 +70,36 @@ export const getGoogleApiSetupHint = (status?: string, errorMessage?: string) =>
   return errorMessage || 'Google location API unavailable.';
 };
 
-const fetchGoogleJson = async (url: string) => {
-  const response = await fetch(url);
+export const isAbortError = (error: unknown) => {
+  if (!error || typeof error !== 'object') return false;
+  const err = error as { name?: string; message?: string; code?: number };
+  return (
+    err.name === 'AbortError' ||
+    err.code === 20 ||
+    /aborted|abort/i.test(String(err.message || ''))
+  );
+};
+
+const fetchGoogleJson = async (url: string, signal?: AbortSignal) => {
+  const response = await fetch(url, signal ? { signal } : undefined);
   return response.json();
 };
 
 const tryGoogleRequest = async (
   buildUrl: (key: string) => string,
   keys: string[] = GOOGLE_KEYS,
+  signal?: AbortSignal,
 ) => {
   let lastError = 'Google API unavailable';
 
   for (const key of keys) {
+    if (signal?.aborted) {
+      const abortErr = new Error('Aborted');
+      (abortErr as any).name = 'AbortError';
+      throw abortErr;
+    }
     try {
-      const data = await fetchGoogleJson(buildUrl(key));
+      const data = await fetchGoogleJson(buildUrl(key), signal);
       if (
         data.status === 'OK' ||
         data.status === 'ZERO_RESULTS' ||
@@ -100,6 +118,9 @@ const tryGoogleRequest = async (
         key.slice(-6),
       );
     } catch (error: any) {
+      if (isAbortError(error) || signal?.aborted) {
+        throw error;
+      }
       lastError = error?.message || lastError;
     }
   }
@@ -178,39 +199,6 @@ const geoOptions = (
   distanceFilter: 0,
 });
 
-const readPosition = (
-  highAccuracy: boolean,
-  timeout: number,
-  maxAccuracyMeters?: number,
-  maximumAge = 0,
-): Promise<Coordinates> =>
-  new Promise((resolve, reject) => {
-    Geolocation.getCurrentPosition(
-      position => {
-        const accuracy = position.coords.accuracy;
-        console.log('GPS_FIX', {
-          accuracy,
-          lat: position.coords.latitude,
-          lng: position.coords.longitude,
-        });
-        if (
-          maxAccuracyMeters != null &&
-          accuracy != null &&
-          accuracy > maxAccuracyMeters
-        ) {
-          reject(new Error(`Low accuracy fix (${accuracy}m)`));
-          return;
-        }
-        resolve({
-          latitude: position.coords.latitude,
-          longitude: position.coords.longitude,
-        });
-      },
-      error => reject(error),
-      geoOptions(highAccuracy, timeout, maximumAge),
-    );
-  });
-
 const haversineMeters = (a: Coordinates, b: Coordinates): number => {
   const toRad = (d: number) => (d * Math.PI) / 180;
   const R = 6371000;
@@ -224,96 +212,109 @@ const haversineMeters = (a: Coordinates, b: Coordinates): number => {
   return 2 * R * Math.asin(Math.sqrt(h));
 };
 
-/**
- * Prefer a fresh high-accuracy GPS fix.
- * Never accept a ~700m network blob as "current" when GPS can still settle.
- */
-export const getCurrentPosition = async (): Promise<Coordinates> => {
-  // Continuous GPS watch first — single getCurrentPosition often returns
-  // a coarse cell/Wi‑Fi fix (~500–800m) on Android.
-  try {
-    return await watchPositionOnce(25000, 35, 80);
-  } catch {
-    // continue
-  }
-
-  try {
-    return await readPosition(true, 12000, 100, 0);
-  } catch {
-    // continue
-  }
-
-  try {
-    return await watchPositionOnce(15000, 60, 120);
-  } catch {
-    // Absolute last resort — may be coarse
-    return readPosition(true, 10000, undefined, 0);
-  }
-};
+const readGeoPosition = (position: {
+  coords: { latitude: number; longitude: number; accuracy?: number | null };
+}): Coordinates => ({
+  latitude: position.coords.latitude,
+  longitude: position.coords.longitude,
+  accuracy:
+    position.coords.accuracy != null
+      ? Number(position.coords.accuracy)
+      : undefined,
+});
 
 /**
- * Watch GPS until accuracy is good enough (or timeout with best sample).
- * @param goodEnoughM resolve early when accuracy ≤ this
- * @param acceptBestM after timeout, only accept best if ≤ this (else reject)
+ * Fresh device fix for "Use my current location".
+ * Watches up to 8s for the most accurate sample (stop early at ≤75m),
+ * then falls back to one getCurrentPosition. Never reuses a cached city.
  */
-const watchPositionOnce = (
-  timeout: number,
-  goodEnoughM = 40,
-  acceptBestM = 100,
+export const getCurrentPosition = (
+  options: {
+    enableHighAccuracy?: boolean;
+    timeout?: number;
+    maximumAge?: number;
+  } = {},
 ): Promise<Coordinates> =>
   new Promise((resolve, reject) => {
+    const geoOpts = geoOptions(
+      options.enableHighAccuracy ?? true,
+      options.timeout ?? 20000,
+      options.maximumAge ?? 0,
+    );
+
+    let settled = false;
     let watchId: number | null = null;
     let best: Coordinates | null = null;
-    let bestAccuracy = Infinity;
+    let fallbackTimer: ReturnType<typeof setTimeout> | null = null;
 
-    const finish = (coords: Coordinates | null, err?: any) => {
+    const finish = (result: Coordinates | null, error?: any) => {
+      if (settled) return;
+      settled = true;
       if (watchId != null) {
-        Geolocation.clearWatch(watchId);
+        try {
+          Geolocation.clearWatch(watchId);
+        } catch {
+          /* ignore */
+        }
         watchId = null;
       }
-      if (coords) {
-        resolve(coords);
+      if (fallbackTimer) clearTimeout(fallbackTimer);
+      if (result) {
+        console.log('GPS_FIX', {
+          accuracy: result.accuracy,
+          lat: result.latitude,
+          lng: result.longitude,
+        });
+        resolve(result);
         return;
       }
-      reject(err || new Error('Location watch timed out'));
+      reject(error || new Error('Location unavailable'));
     };
 
-    const timer = setTimeout(() => {
-      if (best && bestAccuracy <= acceptBestM) {
+    const oneShot = () => {
+      Geolocation.getCurrentPosition(
+        position => finish(readGeoPosition(position)),
+        err => finish(null, err),
+        geoOpts,
+      );
+    };
+
+    try {
+      watchId = Geolocation.watchPosition(
+        position => {
+          const next = readGeoPosition(position);
+          if (
+            !best ||
+            (next.accuracy != null &&
+              (best.accuracy == null || next.accuracy < best.accuracy))
+          ) {
+            best = next;
+          }
+          // Good enough for pinning a delivery address
+          if (next.accuracy != null && next.accuracy <= 75) {
+            finish(next);
+          }
+        },
+        () => {
+          // Watch failed — one getCurrentPosition if we have nothing yet
+          if (!best) oneShot();
+        },
+        geoOpts,
+      );
+    } catch {
+      watchId = null;
+      oneShot();
+      return;
+    }
+
+    // After 8s, keep the best reading; otherwise one-shot
+    fallbackTimer = setTimeout(() => {
+      if (best) {
         finish(best);
         return;
       }
-      finish(null, new Error(`GPS accuracy too low (${bestAccuracy}m)`));
-    }, timeout);
-
-    watchId = Geolocation.watchPosition(
-      position => {
-        const accuracy = position.coords.accuracy ?? Infinity;
-        const coords = {
-          latitude: position.coords.latitude,
-          longitude: position.coords.longitude,
-        };
-        if (accuracy < bestAccuracy) {
-          bestAccuracy = accuracy;
-          best = coords;
-        }
-        if (accuracy <= goodEnoughM) {
-          clearTimeout(timer);
-          finish(coords);
-        }
-      },
-      error => {
-        clearTimeout(timer);
-        if (best && bestAccuracy <= acceptBestM) {
-          finish(best);
-          return;
-        }
-        finish(null, error);
-      },
-      {
-        ...geoOptions(true, Math.max(timeout, 20000), 0),
-      },
-    );
+      oneShot();
+    }, 8000);
   });
 
 const scoreGeocodeResult = (result: any, pin?: Coordinates): number => {
@@ -486,6 +487,7 @@ const pickClosestPlaceName = (
  */
 const fetchNearestPlaceName = async (
   coords: Coordinates,
+  signal?: AbortSignal,
 ): Promise<string | null> => {
   const queries = [
     // Closest place of any type
@@ -502,7 +504,11 @@ const fetchNearestPlaceName = async (
 
   for (const buildUrl of queries) {
     try {
-      const { data } = await tryGoogleRequest(buildUrl, GOOGLE_PLACES_KEYS);
+      const { data } = await tryGoogleRequest(
+        buildUrl,
+        GOOGLE_PLACES_KEYS,
+        signal,
+      );
       if (data.status && data.status !== 'OK' && data.status !== 'ZERO_RESULTS') {
         console.log('NEARBY_STATUS', data.status, data.error_message);
         continue;
@@ -511,6 +517,7 @@ const fetchNearestPlaceName = async (
       const name = pickClosestPlaceName(places, coords, 120);
       if (name) return name;
     } catch (e) {
+      if (isAbortError(e) || signal?.aborted) throw e;
       console.log('NEAREST_PLACE_LOOKUP_FAILED', e);
     }
   }
@@ -566,9 +573,15 @@ const attachNearestPlace = async (
   address: ParsedAddress,
   coords: Coordinates,
   geocodeHint?: string | null,
+  signal?: AbortSignal,
 ): Promise<ParsedAddress> => {
+  if (signal?.aborted) {
+    const abortErr = new Error('Aborted');
+    (abortErr as any).name = 'AbortError';
+    throw abortErr;
+  }
   const placeName =
-    (await fetchNearestPlaceName(coords)) ||
+    (await fetchNearestPlaceName(coords, signal)) ||
     (geocodeHint && !isSectorOnlyLabel(geocodeHint) ? geocodeHint : null);
 
   if (!placeName) return address;
@@ -602,6 +615,7 @@ const attachNearestPlace = async (
 
 const reverseGeocodeNominatim = async (
   coords: Coordinates,
+  signal?: AbortSignal,
 ): Promise<ParsedAddress> => {
   const url =
     `https://nominatim.openstreetmap.org/reverse` +
@@ -613,6 +627,7 @@ const reverseGeocodeNominatim = async (
       'User-Agent': 'AyurmuniApp/1.0',
       Accept: 'application/json',
     },
+    signal,
   });
   const data = await response.json();
 
@@ -664,12 +679,16 @@ const reverseGeocodeNominatim = async (
 
 export const reverseGeocode = async (
   coords: Coordinates,
+  opts?: { signal?: AbortSignal },
 ): Promise<ParsedAddress> => {
+  const signal = opts?.signal;
   try {
     // Unfiltered — location_type filters drop many building/POI hits
     const { data } = await tryGoogleRequest(
       key =>
         `https://maps.googleapis.com/maps/api/geocode/json?latlng=${coords.latitude},${coords.longitude}&language=en&region=in&key=${key}`,
+      GOOGLE_KEYS,
+      signal,
     );
 
     const results = Array.isArray(data.results) ? data.results : [];
@@ -687,11 +706,14 @@ export const reverseGeocode = async (
     );
     const geocodeBuilding = extractBuildingFromGeocodeResults(results, coords);
     // Nearby Places fills building names (e.g. Opus Medi) geocode often misses
-    return attachNearestPlace(parsed, coords, geocodeBuilding);
+    return attachNearestPlace(parsed, coords, geocodeBuilding, signal);
   } catch (googleError) {
+    if (isAbortError(googleError) || signal?.aborted) {
+      throw googleError;
+    }
     console.log('GOOGLE_REVERSE_GEOCODE_FALLBACK', googleError);
-    const nominatim = await reverseGeocodeNominatim(coords);
-    return attachNearestPlace(nominatim, coords);
+    const nominatim = await reverseGeocodeNominatim(coords, signal);
+    return attachNearestPlace(nominatim, coords, null, signal);
   }
 };
 
