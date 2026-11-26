@@ -363,10 +363,39 @@ export const TABS =
       label: "Availability",
     },
     {
+      key: "available_time",
+      label: "Time",
+    },
+    {
       key: "experience",
       label: "Experience",
     },
   ];
+
+/** Available-time presets for GET /customers/doctors/ start_time & end_time (HH:mm). */
+export const TIME_PRESETS = [
+  { label: 'Any time', value: 'any', start: '', end: '' },
+  { label: 'Morning', value: 'morning', start: '09:00', end: '12:00' },
+  { label: 'Afternoon', value: 'afternoon', start: '12:00', end: '17:00' },
+  { label: 'Evening', value: 'evening', start: '17:00', end: '21:00' },
+  { label: 'Night', value: 'night', start: '21:00', end: '23:59' },
+  { label: 'Custom', value: 'custom', start: '', end: '' },
+] as const;
+
+export const formatTimeRangeLabel = (start: string, end: string) =>
+  `${start}–${end}`;
+
+export const getTimeWindowLabel = (start?: string, end?: string) => {
+  if (!start || !end) return '';
+  const preset = TIME_PRESETS.find(
+    item => item.start === start && item.end === end && item.value !== 'custom',
+  );
+  return preset?.label || formatTimeRangeLabel(start, end);
+};
+
+/** Only valid when both set and end is after start (HH:mm string compare). */
+export const isValidTimeWindow = (start?: string, end?: string) =>
+  Boolean(start && end && end > start);
 
 export const EXPERIENCE_OPTIONS = [
   {

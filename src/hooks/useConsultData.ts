@@ -280,6 +280,9 @@ export type DoctorListFilters = {
     experience?: string;
     from_date?: string;
     to_date?: string;
+    /** Available time window HH:mm — send only with end_time when end > start */
+    start_time?: string;
+    end_time?: string;
     search?: string;
     page?: number;
     page_size?: number;
@@ -332,6 +335,14 @@ export const useAllDoctors = (selectedFilters: DoctorListFilters = {}) => {
             if (selectedFilters.to_date) {
                 payload.to_date = selectedFilters.to_date;
             }
+            if (
+                selectedFilters.start_time &&
+                selectedFilters.end_time &&
+                selectedFilters.end_time > selectedFilters.start_time
+            ) {
+                payload.start_time = selectedFilters.start_time;
+                payload.end_time = selectedFilters.end_time;
+            }
             if (selectedFilters.search?.trim()) {
                 payload.search = selectedFilters.search.trim();
             }
@@ -362,6 +373,8 @@ export const useAllDoctors = (selectedFilters: DoctorListFilters = {}) => {
         selectedFilters.experience,
         selectedFilters.from_date,
         selectedFilters.to_date,
+        selectedFilters.start_time,
+        selectedFilters.end_time,
         selectedFilters.search,
         selectedFilters.page,
         selectedFilters.page_size,

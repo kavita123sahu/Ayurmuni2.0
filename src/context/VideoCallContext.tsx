@@ -34,8 +34,10 @@ import {
   apiGetCallStatus,
   apiGetCallToken,
   apiPostCallEvent,
+  apiReportJoined,
   apiStartCall,
   buildTokenInfo,
+  clearJoinedDeliveryState,
   requestCallPermissions,
   TokenInfo,
 } from '../services/videoCallApi';
@@ -177,6 +179,7 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({
   }, []);
 
   const resetCallState = useCallback(() => {
+    const endingAppointmentId = appointmentIdRef.current;
     setViewMode('idle');
     setCallParams(null);
     setIsJoined(false);
@@ -202,6 +205,8 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({
       clearInterval(statusPollIntervalRef.current);
       statusPollIntervalRef.current = null;
     }
+    // Allow a future call for this appointment to report joined again.
+    clearJoinedDeliveryState(endingAppointmentId);
   }, []);
 
   const navigateAwayFromCall = useCallback(() => {
@@ -253,7 +258,8 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({
               ? `${connection.channelId}-${connection.localUid}`
               : undefined;
             sessionIdRef.current = sessionId;
-            apiPostCallEvent(appointmentId, 'joined', sessionId);
+            // presence_sync-aware retry; soft-fail so Agora handler never throws
+            apiReportJoined(appointmentId, sessionId);
           },
           onUserJoined: (_connection, uid) => {
             hadRemoteParticipantRef.current = true;

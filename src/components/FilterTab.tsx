@@ -3,6 +3,7 @@ import {
   FlatList,
   Modal,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -13,23 +14,34 @@ import { Ionicons } from "../common/Vector";
 import { Fonts } from "../common/Fonts";
 import { Colors } from "../common/Colors";
 
+export type SelectedFilters = {
+  specialization: any;
+  date_range: string;
+  from_date: string;
+  to_date: string;
+  experience: string;
+  start_time?: string;
+  end_time?: string;
+};
+
+type FilterOption = {
+  label: string;
+  value: string;
+  start?: string;
+  end?: string;
+};
+
 type FilterTabsProps = {
   activeTab: string | null;
   setActiveTab: (val: string | null) => void;
 
-  selectedFilters: {
-    specialization: any;
-    date_range: string;
-    from_date: string;
-    to_date: string;
-    experience: string;
-  };
+  selectedFilters: SelectedFilters;
 
   setSelectedFilters: React.Dispatch<React.SetStateAction<any>>;
 
   clearFilter: (key: string) => void;
 
-  dropdownOptions: { label: string; value: string }[];
+  dropdownOptions: FilterOption[];
 
   getTabLabel: (tab: any) => string;
 
@@ -39,6 +51,9 @@ type FilterTabsProps = {
   setCalendarStep: (step: "from" | "to") => void;
 
   setShowCalendar: (val: boolean) => void;
+
+  /** Opens custom From / To time picker for Available time */
+  setShowTimePicker?: (val: boolean) => void;
 
   getPresetDates: (type: string) => { from: string; to: string };
 };
@@ -55,6 +70,7 @@ const FilterTabs = React.memo((props: FilterTabsProps) => {
     setTempToDate,
     setCalendarStep,
     setShowCalendar,
+    setShowTimePicker,
     setSelectedFilters,
     getPresetDates,
   } = props;
@@ -66,7 +82,7 @@ const FilterTabs = React.memo((props: FilterTabsProps) => {
 
   const closeDropdown = () => setActiveTab(null);
 
-  const applyOption = (tabKey: string, item: { label: string; value: string }) => {
+  const applyOption = (tabKey: string, item: FilterOption) => {
     if (tabKey === "availability" && item.value === "custom_date") {
       setShowCalendar(true);
       setTempFromDate(null);
@@ -88,6 +104,30 @@ const FilterTabs = React.memo((props: FilterTabsProps) => {
       return;
     }
 
+    if (tabKey === "available_time") {
+      if (item.value === "custom") {
+        setShowTimePicker?.(true);
+        setActiveTab(null);
+        return;
+      }
+      if (item.value === "any" || !item.start || !item.end) {
+        setSelectedFilters((prev: any) => ({
+          ...prev,
+          start_time: "",
+          end_time: "",
+        }));
+        setActiveTab(null);
+        return;
+      }
+      setSelectedFilters((prev: any) => ({
+        ...prev,
+        start_time: item.start,
+        end_time: item.end,
+      }));
+      setActiveTab(null);
+      return;
+    }
+
     setSelectedFilters((prev: any) => ({
       ...prev,
       [tabKey === "speciality" ? "specialization" : "experience"]: item.value,
@@ -97,57 +137,67 @@ const FilterTabs = React.memo((props: FilterTabsProps) => {
 
   return (
     <View style={styles.tabsRow}>
-      {TABS.map(tab => {
-        const isOpen = activeTab === tab.key;
-        const isSelected =
-          (tab.key === "speciality" && !!selectedFilters.specialization) ||
-          (tab.key === "experience" && !!selectedFilters.experience) ||
-          (tab.key === "availability" && !!selectedFilters.date_range);
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.tabsScroll}
+      >
+        {TABS.map(tab => {
+          const isOpen = activeTab === tab.key;
+          const isSelected =
+            (tab.key === "speciality" && !!selectedFilters.specialization) ||
+            (tab.key === "experience" && !!selectedFilters.experience) ||
+            (tab.key === "availability" && !!selectedFilters.date_range) ||
+            (tab.key === "available_time" &&
+              !!selectedFilters.start_time &&
+              !!selectedFilters.end_time &&
+              selectedFilters.end_time > selectedFilters.start_time);
 
-        return (
-          <View key={tab.key} style={styles.tabWrapper}>
-            <TouchableOpacity
-              activeOpacity={0.8}
-              onPress={() =>
-                setActiveTab(activeTab === tab.key ? null : tab.key)
-              }
-              style={[styles.tabBtn, isSelected && styles.activeTab]}
-            >
-              <Text
-                style={[styles.tabText, isSelected && styles.activeTabText]}
-                numberOfLines={1}
-                ellipsizeMode="tail"
+          return (
+            <View key={tab.key} style={styles.tabWrapper}>
+              <TouchableOpacity
+                activeOpacity={0.8}
+                onPress={() =>
+                  setActiveTab(activeTab === tab.key ? null : tab.key)
+                }
+                style={[styles.tabBtn, isSelected && styles.activeTab]}
               >
-                {getTabLabel?.(tab) ?? tab.label}
-              </Text>
+                <Text
+                  style={[styles.tabText, isSelected && styles.activeTabText]}
+                  numberOfLines={1}
+                  ellipsizeMode="tail"
+                >
+                  {getTabLabel?.(tab) ?? tab.label}
+                </Text>
 
-              <View style={styles.tabIcons}>
-                {isSelected ? (
-                  <TouchableOpacity
-                    onPress={e => {
-                      e.stopPropagation?.();
-                      clearFilter(tab.key);
-                    }}
-                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                    style={styles.clearIconWrap}
-                  >
-                    <Ionicons
-                      name="close"
-                      size={12}
-                      color={isSelected ? "#fff" : "#0F172A"}
-                    />
-                  </TouchableOpacity>
-                ) : null}
-                <Ionicons
-                  name={isOpen ? "chevron-up" : "chevron-down"}
-                  size={14}
-                  color={isSelected ? "#fff" : "#64748B"}
-                />
-              </View>
-            </TouchableOpacity>
-          </View>
-        );
-      })}
+                <View style={styles.tabIcons}>
+                  {isSelected ? (
+                    <TouchableOpacity
+                      onPress={e => {
+                        e.stopPropagation?.();
+                        clearFilter(tab.key);
+                      }}
+                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                      style={styles.clearIconWrap}
+                    >
+                      <Ionicons
+                        name="close"
+                        size={12}
+                        color={isSelected ? "#fff" : "#0F172A"}
+                      />
+                    </TouchableOpacity>
+                  ) : null}
+                  <Ionicons
+                    name={isOpen ? "chevron-up" : "chevron-down"}
+                    size={14}
+                    color={isSelected ? "#fff" : "#64748B"}
+                  />
+                </View>
+              </TouchableOpacity>
+            </View>
+          );
+        })}
+      </ScrollView>
 
       <Modal
         visible={!!openTab}
@@ -164,7 +214,11 @@ const FilterTabs = React.memo((props: FilterTabsProps) => {
           />
           <Pressable style={styles.dropdownSheet} onPress={() => {}}>
             <Text style={styles.dropdownTitle} numberOfLines={1}>
-              {openTab ? getTabLabel(openTab) : "Filter"}
+              {openTab
+                ? openTab.key === "available_time"
+                  ? "Available time"
+                  : getTabLabel(openTab)
+                : "Filter"}
             </Text>
             <FlatList
               data={dropdownOptions}
@@ -178,6 +232,9 @@ const FilterTabs = React.memo((props: FilterTabsProps) => {
                 >
                   <Text style={styles.optionText} numberOfLines={2}>
                     {item.label}
+                    {item.start && item.end
+                      ? `  (${item.start}–${item.end})`
+                      : ""}
                   </Text>
                 </TouchableOpacity>
               )}
@@ -198,13 +255,19 @@ export const styles = StyleSheet.create({
     paddingHorizontal: 0,
     paddingVertical: 0,
     backgroundColor: "transparent",
-    gap: 6,
     zIndex: 20,
   },
 
+  tabsScroll: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingRight: 4,
+  },
+
   tabWrapper: {
-    flex: 1,
-    minWidth: 0,
+    minWidth: 88,
+    maxWidth: 140,
   },
 
   tabBtn: {
@@ -227,7 +290,7 @@ export const styles = StyleSheet.create({
   },
 
   tabText: {
-    flex: 1,
+    flexShrink: 1,
     fontSize: 11,
     lineHeight: 14,
     fontFamily: Fonts.PoppinsMedium,
@@ -267,7 +330,7 @@ export const styles = StyleSheet.create({
     borderRadius: 14,
     borderWidth: 1,
     borderColor: "#E5E7EB",
-    maxHeight: 280,
+    maxHeight: 320,
     overflow: "hidden",
     elevation: 8,
     shadowColor: "#000",
