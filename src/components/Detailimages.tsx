@@ -428,6 +428,7 @@ const Detailimages: React.FC<Props> = ({
   );
 };
 
+
 export default React.memo(Detailimages);
 
 const styles = StyleSheet.create({

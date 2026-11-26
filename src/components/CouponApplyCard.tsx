@@ -91,13 +91,13 @@ const CouponApplyCard = ({
     // Prefer other valid offers when one is already applied
     const ordered = applied
       ? [
-          ...eligible.filter(
-            c => c.code.toUpperCase() !== applied.code.toUpperCase(),
-          ),
-          ...eligible.filter(
-            c => c.code.toUpperCase() === applied.code.toUpperCase(),
-          ),
-        ]
+        ...eligible.filter(
+          c => c.code.toUpperCase() !== applied.code.toUpperCase(),
+        ),
+        ...eligible.filter(
+          c => c.code.toUpperCase() === applied.code.toUpperCase(),
+        ),
+      ]
       : eligible;
     return ordered.slice(0, 2);
   }, [eligibleCoupons, scopedCoupons, cartAmount, checkoutScope, applied]);
@@ -415,7 +415,7 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     // height: 44,
-    justifyContent:'center',
+    justifyContent: 'center',
     borderWidth: 1,
     borderColor: '#E2E8F0',
     borderRadius: 10,

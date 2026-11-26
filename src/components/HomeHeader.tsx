@@ -535,18 +535,26 @@ const HomeHeader = ({
                             </Text>
                         </TouchableOpacity>
 
-            <View style={styles.locationRow}>
-              <Text
-                style={styles.locationText}
-                numberOfLines={1}
-                ellipsizeMode="tail"
-              >
-                {shortAddress}
-              </Text>
-              <TablerIcon name="chevron-down" size={14} color="#0F172A" />
-            </View>
-          </TouchableOpacity>
-        </View>
+                        <TouchableOpacity
+                            style={styles.locationRow}
+                            onPress={openLocationSheet}
+                            activeOpacity={0.85}
+                        >
+                            <Text
+                                style={styles.locationText}
+                                numberOfLines={1}
+                                ellipsizeMode="tail"
+                            >
+                                {shortAddress}
+                            </Text>
+                            <TablerIcon
+                                name="chevron-down"
+                                size={14}
+                                color="#0F172A"
+                            />
+                        </TouchableOpacity>
+                    </View>
+                </View>
 
         <View style={styles.rightIcons}>
           <TouchableOpacity
