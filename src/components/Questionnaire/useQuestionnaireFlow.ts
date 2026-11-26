@@ -243,9 +243,9 @@ export const useQuestionnaireFlow = (
         // non-blocking
       }
 
+      // finishParams already carries fromAssessment (prakriti) or fromMedical (vikriti)
       navigation.replace(setup.finishRoute, {
         ...(setup.finishParams || {}),
-        fromAssessment: true,
         refreshedAt: Date.now(),
       });
     } catch {

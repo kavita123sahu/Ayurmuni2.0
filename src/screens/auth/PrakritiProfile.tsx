@@ -28,6 +28,8 @@ import { bumpGlobalRefresh } from '../../utils/forceRefresh';
 import { useAppDispatch } from '../../store/hooks';
 import { fetchCustomerData } from '../../store/slices/homeSlice';
 import { Utils } from '../../common/Utils';
+import { buildVikritiFromMedicalHistory } from '../../content/vikriti';
+import VikritiSection from '../../components/VikritiSection';
 
 type DoshaItem = {
   id: number;
@@ -134,6 +136,9 @@ const formatPrakritiData = (apiData: any) => {
       doList: apiData?.content?.lifestyle?.["do's"] || [],
       dontList: apiData?.content?.lifestyle?.["don'ts"] || [],
     },
+    vikriti: buildVikritiFromMedicalHistory(
+      apiData?.medical_history || apiData?.medicalHistory,
+    ),
   };
 };
 
@@ -263,6 +268,8 @@ const PrakritiProfile = (props: any) => {
   const insets = useSafeAreaInsets();
   const dispatch = useAppDispatch();
   const fromAssessment = Boolean(props?.route?.params?.fromAssessment);
+  const fromMedical = Boolean(props?.route?.params?.fromMedical);
+  const justFinishedAssessment = fromAssessment || fromMedical;
   const [analysisData, setAnalysisData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -284,7 +291,16 @@ const PrakritiProfile = (props: any) => {
       let response: any = await _PROFILE_SERVICES.get_prakriti_info();
       if (gen !== fetchGenRef.current) return;
 
-      if (!hasValidPrakritiPayload(response) && fromAssessment) {
+      const arrivedFromFlow = fromAssessment || fromMedical;
+      const vikritiMissing = () =>
+        hasValidPrakritiPayload(response) &&
+        !formatPrakritiData(response.data).vikriti;
+
+      if (
+        arrivedFromFlow &&
+        (!hasValidPrakritiPayload(response) ||
+          (fromMedical && vikritiMissing()))
+      ) {
         await new Promise<void>(resolve => setTimeout(resolve, 700));
         if (gen !== fetchGenRef.current) return;
         response = await _PROFILE_SERVICES.get_prakriti_info();
@@ -317,7 +333,7 @@ const PrakritiProfile = (props: any) => {
         setLoading(false);
       }
     }
-  }, [fromAssessment]);
+  }, [fromAssessment, fromMedical]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -351,7 +367,7 @@ const PrakritiProfile = (props: any) => {
   };
 
   const handleHeaderBack = useCallback(() => {
-    if (fromAssessment) {
+    if (fromAssessment || fromMedical) {
       handleGoHome();
       return;
     }
@@ -360,7 +376,7 @@ const PrakritiProfile = (props: any) => {
       return;
     }
     handleGoHome();
-  }, [fromAssessment, props.navigation]);
+  }, [fromAssessment, fromMedical, props.navigation]);
 
   useFocusEffect(
     useCallback(() => {
@@ -471,6 +487,12 @@ const PrakritiProfile = (props: any) => {
     </View>
   );
 
+  const showVikriti =
+    !fromAssessment && Boolean(analysisData?.vikriti);
+  const showPrakriti = !fromMedical || !showVikriti;
+  const pageTitle =
+    showVikriti && !showPrakriti ? 'Vikriti' : 'Prakriti Analysis';
+
   const renderAnalysisContent = () => {
     if (!analysisData) {
       return renderEmptyState();
@@ -478,114 +500,125 @@ const PrakritiProfile = (props: any) => {
 
     return (
       <>
-        <LinearGradient
-          colors={['#0B7358', '#0D614E', '#0A4F40']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.hero}
-        >
-          <View style={styles.heroBadge}>
-            <TablerIcon name="circle-check" size={14} color="#6EE7B7" />
-            <Text style={styles.completedText}>
-              {fromAssessment ? 'Assessment complete' : 'Prakriti analysis'}
-            </Text>
-          </View>
+        {showPrakriti ? (
+          <>
+            <LinearGradient
+              colors={['#0B7358', '#0D614E', '#0A4F40']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.hero}
+            >
+              <View style={styles.heroBadge}>
+                <TablerIcon name="circle-check" size={14} color="#6EE7B7" />
+                <Text style={styles.completedText}>
+                  {fromAssessment ? 'Assessment complete' : 'Prakriti analysis'}
+                </Text>
+              </View>
 
-          <View style={styles.heroMain}>
-            <View style={styles.heroCopy}>
-              <Text style={styles.heroKicker}>Your dominant type</Text>
-              <Text style={styles.mainTitle}>{analysisData.dominantLabel}</Text>
-              <Text style={styles.subtitle}>
-                {analysisData.coreEssence.title} · personalized for your balance
-              </Text>
+              <View style={styles.heroMain}>
+                <View style={styles.heroCopy}>
+                  <Text style={styles.heroKicker}>Your dominant type</Text>
+                  <Text style={styles.mainTitle}>{analysisData.dominantLabel}</Text>
+                  <Text style={styles.subtitle}>
+                    {analysisData.coreEssence.title} · personalized for your balance
+                  </Text>
+                </View>
+
+                {analysisData.imageUrl ? (
+                  <View style={styles.heroImageWrap}>
+                    <Image
+                      source={{ uri: analysisData.imageUrl }}
+                      style={styles.heroImage}
+                      resizeMode="cover"
+                    />
+                  </View>
+                ) : (
+                  <View
+                    style={[
+                      styles.heroImageWrap,
+                      styles.heroImageFallback,
+                      { borderColor: dominantHighlight },
+                    ]}
+                  >
+                    <TablerIcon name="leaf" size={28} color="#FFFFFF" />
+                  </View>
+                )}
+              </View>
+            </LinearGradient>
+
+            <View style={styles.doshaCard}>
+              <View style={styles.doshaHeader}>
+                <Text style={styles.doshaCardTitle}>Dosha composition</Text>
+                <Text style={styles.doshaCardHint}>Your unique mix</Text>
+              </View>
+              {analysisData.doshas.map((item: DoshaItem, index: number) => (
+                <DoshaMeter key={item.id} item={item} index={index} />
+              ))}
             </View>
 
-            {analysisData.imageUrl ? (
-              <View style={styles.heroImageWrap}>
-                <Image
-                  source={{ uri: analysisData.imageUrl }}
-                  style={styles.heroImage}
-                  resizeMode="cover"
-                />
-              </View>
-            ) : (
-              <View
-                style={[
-                  styles.heroImageWrap,
-                  styles.heroImageFallback,
-                  { borderColor: dominantHighlight },
-                ]}
+            <View style={styles.essenceCard}>
+              <LinearGradient
+                colors={['#0D614E', '#117A64']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.essenceGradient}
               >
-                <TablerIcon name="leaf" size={28} color="#FFFFFF" />
+                <Text style={styles.smallHeading}>Core essence</Text>
+                <Text style={styles.essenceTitle}>
+                  {analysisData.coreEssence.title}
+                </Text>
+                {analysisData.coreEssence.description ? (
+                  <Text style={styles.essenceDescription}>
+                    {analysisData.coreEssence.description}
+                  </Text>
+                ) : (
+                  <Text style={styles.essenceDescription}>
+                    Your constitution guides how you digest, think, and restore.
+                    Follow the rituals below to stay in balance.
+                  </Text>
+                )}
+              </LinearGradient>
+            </View>
+
+            <View style={styles.guidelineHeader}>
+              <View>
+                <Text style={styles.guidelineTitle}>Lifestyle guidelines</Text>
+                <Text style={styles.guidelineLead}>
+                  Built around your {analysisData.dominantLabel} nature
+                </Text>
               </View>
-            )}
-          </View>
-        </LinearGradient>
+              <View style={styles.personalizedPill}>
+                <Text style={styles.personalizedText}>For you</Text>
+              </View>
+            </View>
 
-        <View style={styles.doshaCard}>
-          <View style={styles.doshaHeader}>
-            <Text style={styles.doshaCardTitle}>Dosha composition</Text>
-            <Text style={styles.doshaCardHint}>Your unique mix</Text>
-          </View>
-          {analysisData.doshas.map((item: DoshaItem, index: number) => (
-            <DoshaMeter key={item.id} item={item} index={index} />
-          ))}
-        </View>
+            <GuidelineCard
+              title="Daily rituals"
+              subtitle="Support balance every day"
+              color={Colors.primaryColor}
+              soft="#ECF8F3"
+              icon="circle-check"
+              positive
+              data={analysisData.lifestyleGuidelines.doList}
+            />
 
-        <View style={styles.essenceCard}>
-          <LinearGradient
-            colors={['#0D614E', '#117A64']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.essenceGradient}
-          >
-            <Text style={styles.smallHeading}>Core essence</Text>
-            <Text style={styles.essenceTitle}>
-              {analysisData.coreEssence.title}
-            </Text>
-            {analysisData.coreEssence.description ? (
-              <Text style={styles.essenceDescription}>
-                {analysisData.coreEssence.description}
-              </Text>
-            ) : (
-              <Text style={styles.essenceDescription}>
-                Your constitution guides how you digest, think, and restore.
-                Follow the rituals below to stay in balance.
-              </Text>
-            )}
-          </LinearGradient>
-        </View>
+            <GuidelineCard
+              title="Things to ease"
+              subtitle="Reduce friction for your dosha"
+              color="#EA580C"
+              soft="#FFF7ED"
+              icon="alert-circle"
+              data={analysisData.lifestyleGuidelines.dontList}
+            />
+          </>
+        ) : null}
 
-        <View style={styles.guidelineHeader}>
-          <View>
-            <Text style={styles.guidelineTitle}>Lifestyle guidelines</Text>
-            <Text style={styles.guidelineLead}>
-              Built around your {analysisData.dominantLabel} nature
-            </Text>
-          </View>
-          <View style={styles.personalizedPill}>
-            <Text style={styles.personalizedText}>For you</Text>
-          </View>
-        </View>
-
-        <GuidelineCard
-          title="Daily rituals"
-          subtitle="Support balance every day"
-          color={Colors.primaryColor}
-          soft="#ECF8F3"
-          icon="circle-check"
-          positive
-          data={analysisData.lifestyleGuidelines.doList}
-        />
-
-        <GuidelineCard
-          title="Things to ease"
-          subtitle="Reduce friction for your dosha"
-          color="#EA580C"
-          soft="#FFF7ED"
-          icon="alert-circle"
-          data={analysisData.lifestyleGuidelines.dontList}
-        />
+        {showVikriti ? (
+          <VikritiSection
+            vikriti={analysisData.vikriti}
+            justCompleted={fromMedical}
+          />
+        ) : null}
 
         <View style={styles.secondaryActions}>
           <TouchableOpacity
@@ -629,15 +662,15 @@ const PrakritiProfile = (props: any) => {
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
 
       <View style={styles.header}>
-        {fromAssessment ? (
+        {justFinishedAssessment ? (
           <View style={styles.iconBtnPlaceholder} />
         ) : (
           <BackIconButton onPress={handleHeaderBack} />
         )}
 
-        <Text style={styles.headerTitle}>Prakriti Analysis</Text>
+        <Text style={styles.headerTitle}>{pageTitle}</Text>
 
-        {hasPrakriti && !loading ? (
+        {hasPrakriti && !loading && showPrakriti ? (
           <TouchableOpacity
             style={styles.iconBtn}
             onPress={handleEditAssessment}
@@ -682,7 +715,11 @@ const PrakritiProfile = (props: any) => {
               end={{ x: 1, y: 0 }}
               style={styles.homeBtn}
             >
-              <Text style={styles.homeBtnText}>Vikriti assessment</Text>
+              <Text style={styles.homeBtnText}>
+                {analysisData?.vikriti
+                  ? 'Retake Vikriti assessment'
+                  : 'Vikriti assessment'}
+              </Text>
               <TablerIcon name="arrow-right" size={18} color="#FFFFFF" />
             </LinearGradient>
           </TouchableOpacity>
