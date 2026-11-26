@@ -197,13 +197,13 @@ const VikritiSection = ({ vikriti, justCompleted = false }: Props) => {
               </Text>
             </View>
           </View>
-          <Text style={styles.subtitle}>
+          {/* <Text style={styles.subtitle}>
             Two separate readings — each with your result, then optional compare
-          </Text>
+          </Text> */}
         </View>
       </View>
 
-      <View style={styles.legend}>
+      {/* <View style={styles.legend}>
         <View style={styles.legendItem}>
           <View style={[styles.legendSwatch, styles.legendSwatchYours]} />
           <Text style={styles.legendText}>Your matched type</Text>
@@ -212,7 +212,7 @@ const VikritiSection = ({ vikriti, justCompleted = false }: Props) => {
           <View style={[styles.legendSwatch, styles.legendSwatchOther]} />
           <Text style={styles.legendText}>Other types in same group</Text>
         </View>
-      </View>
+      </View> */}
 
       <View style={styles.stack}>
         {categories.map((block, index) => (
@@ -259,6 +259,7 @@ const styles = StyleSheet.create({
     minWidth: 0,
   },
   titleRow: {
+    paddingTop: 4,
     flexDirection: 'row',
     alignItems: 'center',
     flexWrap: 'wrap',
