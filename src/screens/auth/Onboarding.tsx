@@ -5,6 +5,7 @@ import {
     Text,
     TextInput,
     TouchableOpacity,
+    Pressable,
     StatusBar,
     StyleSheet,
     Image,
@@ -55,6 +56,93 @@ interface FormErrors {
     gender: string;
     dob: string;
 }
+
+/** Android draws a centered TextInput caret on the right. This blinks in the middle instead. */
+const DobCaret = ({ spaced }: { spaced?: boolean }) => {
+    const opacity = useRef(new Animated.Value(1)).current;
+
+    useEffect(() => {
+        const animation = Animated.loop(
+            Animated.sequence([
+                Animated.timing(opacity, {
+                    toValue: 0,
+                    duration: 480,
+                    useNativeDriver: true,
+                }),
+                Animated.timing(opacity, {
+                    toValue: 1,
+                    duration: 480,
+                    useNativeDriver: true,
+                }),
+            ]),
+        );
+        animation.start();
+        return () => animation.stop();
+    }, [opacity]);
+
+    return (
+        <Animated.View
+            style={[styles.dobCaret, spaced && styles.dobCaretSpaced, { opacity }]}
+        />
+    );
+};
+
+const DobDigitField = ({
+    inputRef,
+    value,
+    placeholder,
+    maxLength,
+    focused,
+    wide,
+    onFocus,
+    onBlur,
+    onChangeText,
+    onKeyPress,
+}: {
+    inputRef: React.RefObject<TextInput | null>;
+    value: string;
+    placeholder: string;
+    maxLength: number;
+    focused: boolean;
+    wide?: boolean;
+    onFocus: () => void;
+    onBlur: () => void;
+    onChangeText: (text: string) => void;
+    onKeyPress: (event: { nativeEvent: { key: string } }) => void;
+}) => (
+    <Pressable
+        style={[
+            styles.dobBox,
+            wide && styles.dobYearBox,
+            value ? styles.inputFilled : null,
+        ]}
+        onPressIn={() => inputRef.current?.focus()}
+    >
+        <View pointerEvents="none" style={styles.dobMirror}>
+            {!value && !focused && placeholder ? (
+                <Text style={styles.dobPlaceholderText}>{placeholder}</Text>
+            ) : null}
+            {value ? (
+                <Text style={styles.dobMirrorText}>{value}</Text>
+            ) : null}
+            {focused ? <DobCaret spaced={!!value} /> : null}
+        </View>
+        <TextInput
+            ref={inputRef}
+            value={value}
+            keyboardType="number-pad"
+            maxLength={maxLength}
+            caretHidden
+            pointerEvents="none"
+            selectionColor="transparent"
+            style={styles.dobFieldInput}
+            onFocus={onFocus}
+            onBlur={onBlur}
+            onChangeText={onChangeText}
+            onKeyPress={onKeyPress}
+        />
+    </Pressable>
+);
 
 const Onboarding = (props: any) => {
 
@@ -769,25 +857,18 @@ const Onboarding = (props: any) => {
 
                             <View style={styles.dobContainer}>
 
-                                <TextInput
-                                    ref={dayRef}
-                                    placeholder={
-                                        focusedField === 'day' || dob.year === '' ? 'DD' : ''
-                                    }
-                                    placeholderTextColor="#9CA3AF"
+                                <DobDigitField
+                                    inputRef={dayRef}
                                     value={dob.day}
-                                    keyboardType="number-pad"
+                                    placeholder={dob.year === '' ? 'DD' : ''}
                                     maxLength={2}
-                                    textAlign="center"
-                                    style={[
-                                        styles.dobInput,
-                                        dob.day && styles.inputFilled,
-                                    ]}
+                                    focused={focusedField === 'day'}
                                     onFocus={() => {
                                         setFocusedField('day');
                                         clearDobError();
                                         onFieldFocus(dayRef);
                                     }}
+                                    onBlur={() => setFocusedField(null)}
                                     onChangeText={(t) => {
                                         clearDobError();
 
@@ -802,7 +883,6 @@ const Onboarding = (props: any) => {
                                             monthRef.current?.focus();
                                         }
                                     }}
-                                    onBlur={() => setFocusedField(null)}
                                     onKeyPress={({ nativeEvent }) => {
                                         if (
                                             nativeEvent.key === 'Backspace' &&
@@ -813,20 +893,12 @@ const Onboarding = (props: any) => {
                                     }}
                                 />
 
-                                <TextInput
-                                    ref={monthRef}
-                                    placeholder={
-                                        focusedField === 'month' || dob.year === '' ? 'MM' : ''
-                                    }
-                                    placeholderTextColor="#9CA3AF"
+                                <DobDigitField
+                                    inputRef={monthRef}
                                     value={dob.month}
-                                    keyboardType="number-pad"
+                                    placeholder={dob.year === '' ? 'MM' : ''}
                                     maxLength={2}
-                                    textAlign="center"
-                                    style={[
-                                        styles.dobInput,
-                                        dob.month && styles.inputFilled,
-                                    ]}
+                                    focused={focusedField === 'month'}
                                     onFocus={() => {
                                         setFocusedField('month');
                                         clearDobError();
@@ -857,27 +929,19 @@ const Onboarding = (props: any) => {
                                     }}
                                 />
 
-                                <TextInput
-                                    ref={yearRef}
+                                <DobDigitField
+                                    inputRef={yearRef}
                                     value={dob.year}
-                                    placeholder={
-                                        focusedField === 'year' || dob.year === '' ? 'YYYY' : ''
-                                    }
-                                    placeholderTextColor="#9CA3AF"
+                                    placeholder="YYYY"
+                                    maxLength={4}
+                                    wide
+                                    focused={focusedField === 'year'}
                                     onFocus={() => {
                                         setFocusedField('year');
                                         clearDobError();
                                         onFieldFocus(yearRef);
                                     }}
                                     onBlur={() => setFocusedField(null)}
-                                    keyboardType="number-pad"
-                                    maxLength={4}
-                                    textAlign="center"
-                                    style={[
-                                        styles.dobInput,
-                                        styles.dobYearInput,
-                                        dob.year && styles.inputFilled,
-                                    ]}
                                     onChangeText={(t) => {
                                         clearDobError();
 
@@ -1299,30 +1363,64 @@ const styles = StyleSheet.create({
         marginBottom: 18,
     },
 
-    dobInput: {
+    dobBox: {
         width: '30%',
         height: 50,
         borderWidth: 1,
         borderColor: '#E5E7EB',
         borderRadius: 12,
         backgroundColor: '#fff',
-        textAlign: 'center',
-        textAlignVertical: 'center',
-        includeFontPadding: false,
-        fontFamily: Fonts.PoppinsMedium,
-        fontSize: 14,
-        color: '#111827',
-        paddingTop: 0,
-        paddingBottom: 0,
-        paddingLeft: 0,
-        paddingRight: 0,
-        writingDirection: 'ltr',
+        alignItems: 'center',
+        justifyContent: 'center',
+        position: 'relative',
+        overflow: 'hidden',
     },
 
-    dobYearInput: {
+    dobYearBox: {
         flex: 1.3,
         width: '34%',
+    },
+
+    dobFieldInput: {
+        ...StyleSheet.absoluteFillObject,
+        color: 'transparent',
+        backgroundColor: 'transparent',
+        padding: 0,
+        margin: 0,
+        opacity: 0,
+    },
+
+    dobMirror: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+
+    dobMirrorText: {
+        fontFamily: Fonts.PoppinsMedium,
+        fontSize: 14,
+        color: '#0D614E',
+        includeFontPadding: false,
         textAlign: 'center',
+    },
+
+    dobPlaceholderText: {
+        fontFamily: Fonts.PoppinsMedium,
+        fontSize: 14,
+        color: '#9CA3AF',
+        includeFontPadding: false,
+        textAlign: 'center',
+    },
+
+    dobCaret: {
+        width: 1.5,
+        height: 18,
+        borderRadius: 1,
+        backgroundColor: '#111827',
+    },
+
+    dobCaretSpaced: {
+        marginLeft: 1,
     },
 
     /* ---------------- ERROR ---------------- */

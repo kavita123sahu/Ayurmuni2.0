@@ -50,7 +50,7 @@ import HydrationCard from '../../components/HydrationCard';
 import WaterGoalStartModal from '../../components/WaterGoalStartModal';
 import DietPaymentSheet from '../../components/DietPaymentSheet';
 import { useDietPurchase } from '../../hooks/useDietPurchase';
-import { formatRupee } from '../../utils/currencyUtils';
+import { RupeeAmount } from '../../utils/currencyUtils';
 import { showSuccessToast } from '../../config/Key';
 import { DIET_UI, SCREEN } from '../../constants/responsive';
 import { consumePendingDietPlanReview } from '../../utils/pendingDietPlanReview';
@@ -59,6 +59,12 @@ import {
   markDietPlanAssignmentReviewed,
 } from '../../utils/reviewedDietPlans';
 import { styles } from './DietPlanDetailScreen.styles';
+
+const formatPlanLabel = (value?: string | null) =>
+  String(value || '')
+    .replace(/_/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
 
 const MACRO_COLORS = {
   Carbs: '#1FA77A',
@@ -1148,10 +1154,23 @@ const DietPlanDetailScreen = (props: any) => {
     return selectedSummary?.short_description || '—';
   }, [selectedSummary, planDetail]);
 
-  const priceLabel =
-    selectedSummary?.is_paid === false || Number(selectedSummary?.price) === 0
-      ? 'Free'
-      : formatRupee(selectedSummary?.price ?? 0);
+  const detailPriceValue = Number(
+    planDetail?.price ?? selectedSummary?.price ?? 0,
+  );
+  const isDetailFree =
+    planDetail?.is_paid === false ||
+    selectedSummary?.is_paid === false ||
+    !Number.isFinite(detailPriceValue) ||
+    detailPriceValue === 0;
+  const prakritiLabel = formatPlanLabel(
+    selectedSummary?.prakriti || planDetail?.prakriti,
+  );
+  const seasonLabel = formatPlanLabel(
+    selectedSummary?.season || planDetail?.season,
+  );
+  const focusLabel = formatPlanLabel(
+    diseaseText && diseaseText !== '—' ? diseaseText : '',
+  );
 
   const detailRatingLabel = useMemo(
     () => getDietPlanRatingLabel(planDetail || selectedSummary),
@@ -1601,28 +1620,6 @@ const DietPlanDetailScreen = (props: any) => {
             </View>
 
             <View style={styles.detailCard}>
-              <View style={styles.detailTagRow}>
-                {!!(selectedSummary?.prakriti || planDetail?.prakriti) && (
-                  <View style={styles.detailTag}>
-                    <Text style={styles.detailTagText}>
-                      {selectedSummary?.prakriti || planDetail?.prakriti}
-                    </Text>
-                  </View>
-                )}
-                {!!(selectedSummary?.season || planDetail?.season) && (
-                  <View style={styles.detailTag}>
-                    <Text style={styles.detailTagText}>
-                      {selectedSummary?.season || planDetail?.season}
-                    </Text>
-                  </View>
-                )}
-                <View style={[styles.detailTag, styles.detailPriceTag]}>
-                  <Text style={[styles.detailTagText, styles.detailPriceText]}>
-                    {priceLabel}
-                  </Text>
-                </View>
-              </View>
-
               <Text style={styles.detailTitle}>
                 {selectedSummary?.name || planDetail?.name}
               </Text>
@@ -1631,10 +1628,9 @@ const DietPlanDetailScreen = (props: any) => {
                 <View style={styles.detailRatingRow}>
                   <View style={styles.detailRatingBadge}>
                     <TablerIcon
-                      name="star"
+                      name="star-filled"
                       size={14}
-                      color="#F59E0B"
-                      strokeWidth={2}
+                      color="#E0A106"
                     />
                     <Text style={styles.detailRatingValue}>
                       {detailRatingLabel}
@@ -1643,25 +1639,44 @@ const DietPlanDetailScreen = (props: any) => {
                 </View>
               ) : null}
 
-              {!!diseaseText && diseaseText !== '—' && (
-                <Text style={styles.detailFocus}>Focus: {diseaseText}</Text>
-              )}
+              <View style={styles.detailPriceBlock}>
+                <View style={styles.detailPriceCopy}>
+                  <Text style={styles.detailPriceCaption}>
+                    {isDetailFree ? 'Included' : 'Plan price'}
+                  </Text>
+                  {isDetailFree ? (
+                    <Text style={styles.detailPriceAmount}>Free</Text>
+                  ) : (
+                    <RupeeAmount
+                      value={detailPriceValue}
+                      style={styles.detailPriceAmount}
+                    />
+                  )}
+                </View>
+                <Text style={styles.detailPriceNote}>
+                  {isDetailFree ? 'No payment needed' : 'One-time payment'}
+                </Text>
+              </View>
 
-              <View style={styles.detailRow}>
-                <Text style={styles.detailLabel}>Prakriti</Text>
-                <Text style={styles.detailValue}>
-                  {selectedSummary?.prakriti || planDetail?.prakriti || '—'}
-                </Text>
-              </View>
-              <View style={styles.detailRow}>
-                <Text style={styles.detailLabel}>Season</Text>
-                <Text style={styles.detailValue}>
-                  {selectedSummary?.season || planDetail?.season || '—'}
-                </Text>
-              </View>
-              <View style={[styles.detailRow, { borderBottomWidth: 0 }]}>
-                <Text style={styles.detailLabel}>Health focus</Text>
-                <Text style={styles.detailValue}>{diseaseText}</Text>
+              <View style={styles.detailFacts}>
+                <View style={styles.detailRow}>
+                  <Text style={styles.detailLabel}>Prakriti</Text>
+                  <Text style={styles.detailValue}>
+                    {prakritiLabel || '—'}
+                  </Text>
+                </View>
+                <View style={styles.detailRow}>
+                  <Text style={styles.detailLabel}>Season</Text>
+                  <Text style={styles.detailValue}>
+                    {seasonLabel || '—'}
+                  </Text>
+                </View>
+                <View style={[styles.detailRow, styles.detailRowLast]}>
+                  <Text style={styles.detailLabel}>Health focus</Text>
+                  <Text style={styles.detailValue}>
+                    {focusLabel || '—'}
+                  </Text>
+                </View>
               </View>
             </View>
 

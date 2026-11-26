@@ -866,11 +866,11 @@ export const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderRadius: RADIUS.lg,
     paddingHorizontal: SPACING.lg,
-    paddingTop: SPACING.md + 2,
-    paddingBottom: SPACING.md,
+    paddingTop: 16,
+    paddingBottom: 12,
     borderWidth: 1,
     borderColor: '#E8EEF2',
-    marginTop: -DIET_UI.detailCardOverlap,
+    marginTop: 16,
     width: '100%',
     alignSelf: 'center',
     zIndex: 2,
@@ -934,16 +934,63 @@ export const styles = StyleSheet.create({
     fontSize: TYPO.xxl,
     fontFamily: Fonts.PoppinsSemiBold,
     color: '#0F172A',
-    marginBottom: SPACING.xs + 2,
-    lineHeight: 26,
+    lineHeight: 28,
+  },
+
+  detailPriceBlock: {
+    marginTop: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#F3FAF7',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#D5EBE3',
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    gap: 12,
+  },
+
+  detailPriceCopy: {
+    flexShrink: 1,
+  },
+
+  detailPriceCaption: {
+    fontSize: 11,
+    lineHeight: 14,
+    color: '#5E7A70',
+    fontFamily: Fonts.PoppinsMedium,
+    marginBottom: 2,
+  },
+
+  detailPriceAmount: {
+    fontSize: 22,
+    fontFamily: Fonts.PoppinsSemiBold,
+    color: '#0D614E',
+  },
+
+  detailPriceNote: {
+    flexShrink: 1,
+    textAlign: 'right',
+    fontSize: 12,
+    lineHeight: 16,
+    color: '#3E6B5C',
+    fontFamily: Fonts.PoppinsMedium,
+  },
+
+  detailFacts: {
+    marginTop: 8,
+  },
+
+  detailRowLast: {
+    borderBottomWidth: 0,
+    paddingBottom: 2,
   },
 
   detailRatingRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    flexWrap: 'wrap',
-    gap: SPACING.sm,
-    marginBottom: 10,
+    marginTop: 10,
   },
 
   detailRatingBadge: {
@@ -1156,9 +1203,9 @@ export const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'flex-start',
     gap: SPACING.md,
-    paddingVertical: SPACING.sm + 2,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9',
+    paddingVertical: 13,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#E8EEF2',
   },
 
   detailLabel: {
@@ -1178,7 +1225,7 @@ export const styles = StyleSheet.create({
   },
 
   startBtn: {
-    marginTop: SPACING.lg,
+    marginTop: 20,
     height: BUTTON.height,
     backgroundColor: Colors.primaryColor,
     borderRadius: RADIUS.md,

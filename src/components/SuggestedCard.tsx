@@ -143,7 +143,7 @@ const YogaPreviewVideo = ({
 
 const SuggestedCard: React.FC<Props> = ({
   data,
-  price = false,
+  price = true,
   isGrid = false,
   header = false,
   navigation,
@@ -152,6 +152,7 @@ const SuggestedCard: React.FC<Props> = ({
   edgeScroll = false,
 }) => {
   const [showAll, setShowAll] = useState(false);
+  const [railWidth, setRailWidth] = useState(0);
 
   const safeData = useMemo(
     () => (Array.isArray(data) ? data : []),
@@ -222,9 +223,9 @@ const SuggestedCard: React.FC<Props> = ({
 
   const getDietSubtitle = useCallback((item: SuggestedItem) => {
     return String(
-      item?.guidance ||
-      item?.subtitle ||
       item?.season ||
+      item?.subtitle ||
+      item?.guidance ||
       item?.short_description ||
       '',
     ).trim();
@@ -279,6 +280,15 @@ const SuggestedCard: React.FC<Props> = ({
   /*                              DIET CARD                                   */
   /* ------------------------------------------------------------------------ */
 
+  const isDietRail =
+    !isGrid && formattedData.some(item => item?.type === 'diet');
+  const dietCount = formattedData.filter(item => item?.type === 'diet').length;
+  const dietPeek = dietCount > 2 ? DIET_PEEK : 0;
+  const dietCardWidth =
+    isDietRail && railWidth > 0
+      ? Math.floor((railWidth - DIET_GAP - dietPeek) / 2)
+      : DIET_CARD_WIDTH;
+
   const renderDietCard = (item: SuggestedItem) => {
     const title = item?.title || item?.name || '';
 
@@ -298,26 +308,25 @@ const SuggestedCard: React.FC<Props> = ({
     const ratingText =
       formatDietPlanRatingBadgeText(item);
 
-    const dietStatus = String(
-      item?.patient_assignment_status ||
-      item?.status ||
-      '',
-    )
-      .replace(/_/g, ' ')
-      .trim();
-
     const imageUri = getDietImage(item);
+    const isFree =
+      item?.is_paid === false || Number(item?.price) === 0;
+    const seasonLabel = subtitle
+      ? subtitle.charAt(0).toUpperCase() + subtitle.slice(1)
+      : '';
+    const metaText = seasonLabel || (doctorName ? `Dr. ${doctorLabel}` : '');
 
     return (
       <TouchableOpacity
-        activeOpacity={0.85}
+        activeOpacity={0.92}
         onPress={() => handleDietPress(item)}
         style={[
-          styles.card,
+          styles.dietCard,
+          !isGrid && { width: dietCardWidth },
           isGrid && styles.gridCard,
         ]}
       >
-        <View style={styles.imageContainer}>
+        <View style={styles.dietImageWrap}>
           <Image
             source={
               imageUri
@@ -329,117 +338,68 @@ const SuggestedCard: React.FC<Props> = ({
           />
 
           {!!prakriti && (
-            <View
-              style={[
-                styles.prakritiOverlay,
-                styles.prakritiBadge,
-              ]}
-            >
-              <Text
-                style={[
-                  styles.prakritiOverlayText,
-                  styles.prakritiBadgeText,
-                ]}
-                numberOfLines={1}
-              >
+            <View style={styles.prakritiBadge}>
+              <Text style={styles.prakritiBadgeText} numberOfLines={1}>
                 {prakriti}
               </Text>
             </View>
           )}
         </View>
 
-        <View style={styles.subContainer}>
-          <View style={styles.contentColumn}>
-            <Text
-              style={styles.title}
-              numberOfLines={2}
-              ellipsizeMode="tail"
-            >
-              {title}
-            </Text>
+        <View style={styles.dietBody}>
+          <Text
+            style={styles.dietTitle}
+            numberOfLines={2}
+            ellipsizeMode="tail"
+          >
+            {title}
+          </Text>
 
-            {!!subtitle && (
-              <Text
-                style={styles.subtitle}
-                numberOfLines={1}
-                ellipsizeMode="tail"
-              >
-                {subtitle}
-              </Text>
-            )}
-
-            {!subtitle && !!doctorName && (
-              <View style={styles.doctorSuggestChip}>
+          <View style={styles.dietMetaRow}>
+            {metaText ? (
+              <View style={styles.dietSeasonChip}>
                 <TablerIcon
-                  name="stethoscope"
-                  size={11}
+                  name={doctorName && !seasonLabel ? 'stethoscope' : 'leaf'}
+                  size={12}
                   color="#0D614E"
                 />
-
-                <View style={styles.doctorSuggestChipCopy}>
-                  <Text
-                    style={styles.doctorSuggestChipLabel}
-                  >
-                    Suggested by
-                  </Text>
-
-                  <Text
-                    style={styles.doctorSuggestChipName}
-                    numberOfLines={1}
-                  >
-                    Dr. {doctorLabel}
-                  </Text>
-                </View>
+                <Text
+                  style={styles.dietSeasonText}
+                  numberOfLines={1}
+                  ellipsizeMode="tail"
+                >
+                  {metaText}
+                </Text>
               </View>
+            ) : (
+              <View style={styles.dietSeasonChip} />
             )}
 
-            <View style={styles.infoRow}>
-              {!!ratingText && (
-                <View style={styles.ratingBadge}>
-                  <TablerIcon
-                    name="star"
-                    size={10}
-                    color="#F59E0B"
-                    strokeWidth={2}
-                  />
-
-                  <Text
-                    style={styles.ratingBadgeText}
-                    numberOfLines={1}
-                  >
-                    {ratingText}
-                  </Text>
-                </View>
-              )}
-
-              {!!dietStatus && (
-                <View style={styles.badge}>
-                  <Text
-                    style={styles.badgeText}
-                    numberOfLines={1}
-                  >
-                    {dietStatus.charAt(0).toUpperCase() +
-                      dietStatus.slice(1)}
-                  </Text>
-                </View>
-              )}
-            </View>
-
-            {price && (
-              <View style={styles.priceContainer}>
-                {item?.is_paid === false ||
-                  Number(item?.price) === 0 ? (
-                  <Text style={styles.price}>
-                    Free
-                  </Text>
-                ) : (
-                  <RupeeAmount
-                    value={item?.price}
-                    style={styles.price}
-                  />
-                )}
+            {!!ratingText && (
+              <View style={styles.dietRating}>
+                <TablerIcon
+                  name="star-filled"
+                  size={12}
+                  color="#E0A106"
+                />
+                <Text style={styles.dietRatingText}>{ratingText}</Text>
               </View>
             )}
+          </View>
+
+          <View style={styles.dietDivider} />
+
+          <View style={styles.dietPriceWrap}>
+            {price ? (
+              isFree ? (
+                <Text style={styles.dietPrice}>Free</Text>
+              ) : (
+                <RupeeAmount
+                  value={item?.price}
+                  style={styles.dietPrice}
+                />
+              )
+            ) : null}
           </View>
         </View>
       </TouchableOpacity>
@@ -526,7 +486,7 @@ const SuggestedCard: React.FC<Props> = ({
               </View>
             )}
 
-            {price && (
+            {/* {price && (
               <View style={styles.priceContainer}>
                 {item?.is_paid === false ||
                   Number(item?.price) === 0 ? (
@@ -540,7 +500,7 @@ const SuggestedCard: React.FC<Props> = ({
                   />
                 )}
               </View>
-            )}
+            )} */}
           </View>
         </View>
       </TouchableOpacity>
@@ -626,6 +586,18 @@ const SuggestedCard: React.FC<Props> = ({
       horizontal={!isGrid}
       numColumns={isGrid ? 2 : 1}
       showsHorizontalScrollIndicator={false}
+      onLayout={event => {
+        const next = Math.round(event.nativeEvent.layout.width);
+        if (next > 0 && next !== railWidth) {
+          setRailWidth(next);
+        }
+      }}
+      snapToInterval={
+        isDietRail ? dietCardWidth + DIET_GAP : undefined
+      }
+      snapToAlignment="start"
+      decelerationRate="fast"
+      disableIntervalMomentum
       contentContainerStyle={[
         styles.listContent,
         home && styles.listContentHome,
@@ -648,6 +620,11 @@ const SuggestedCard: React.FC<Props> = ({
           }
           : undefined
       }
+      ItemSeparatorComponent={
+        !isGrid && formattedData[0]?.type === 'diet'
+          ? DietCardSeparator
+          : undefined
+      }
       renderItem={renderItem}
       ListFooterComponent={renderFooter}
     />
@@ -667,6 +644,14 @@ const GRID_CARD_WIDTH =
 
 const LIST_CARD_WIDTH =
   Math.min(width * 0.42, 156);
+
+/** Two complete diet cards. A short image peek only when another plan is waiting. */
+const DIET_GAP = 12;
+const DIET_PEEK = 10;
+const DIET_CARD_WIDTH = Math.max(
+  148,
+  Math.floor((width - SCREEN_PADDING_H * 2 - DIET_GAP - DIET_PEEK) / 2),
+);
 
 const styles = StyleSheet.create({
   listContent: {
@@ -717,62 +702,117 @@ const styles = StyleSheet.create({
 
   /* ------------------------------- Diet -------------------------------- */
 
-  prakritiOverlay: {
+  dietCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: '#E5EFEB',
+    overflow: 'hidden',
+  },
+
+  dietSeparator: {
+    width: DIET_GAP,
+  },
+
+  dietImageWrap: {
+    width: '100%',
+    height: 108,
+    backgroundColor: '#E8F3EE',
+    overflow: 'hidden',
+  },
+
+  dietBody: {
+    paddingHorizontal: 12,
+    paddingTop: 10,
+    paddingBottom: 12,
+  },
+
+  dietTitle: {
+    height: 40,
+    fontSize: 13,
+    lineHeight: 20,
+    includeFontPadding: false,
+    fontFamily: Fonts.PoppinsSemiBold,
+    color: '#12241E',
+  },
+
+  dietMetaRow: {
+    marginTop: 8,
+    height: 22,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+
+  dietSeasonChip: {
+    flex: 1,
+    minWidth: 0,
+    marginRight: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+
+  dietSeasonText: {
+    flexShrink: 1,
+    fontSize: 11,
+    lineHeight: 14,
+    includeFontPadding: false,
+    color: '#3E6B5C',
+    fontFamily: Fonts.PoppinsMedium,
+  },
+
+  dietRating: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+  },
+
+  dietRatingText: {
+    fontSize: 12,
+    lineHeight: 16,
+    includeFontPadding: false,
+    color: '#8A6A10',
+    fontFamily: Fonts.PoppinsSemiBold,
+  },
+
+  dietDivider: {
+    marginTop: 10,
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: '#E6EFEC',
+  },
+
+  prakritiBadge: {
     position: 'absolute',
-    left: 6,
-    top: 6,
-    maxWidth: '88%',
+    left: 8,
+    top: 8,
+    maxWidth: '72%',
+    backgroundColor: 'rgba(255,255,255,0.96)',
     borderRadius: 999,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(13, 97, 78, 0.22)',
     paddingHorizontal: 8,
     paddingVertical: 3,
   },
 
-  prakritiOverlayText: {
-    fontSize: 10,
-    color: '#FFFFFF',
-    fontFamily: Fonts.PoppinsSemiBold,
-  },
-
-  prakritiBadge: {
-    backgroundColor: '#D1FAE5',
-    borderColor: '#047857',
-  },
-
   prakritiBadgeText: {
-    color: '#047857',
-    fontFamily: Fonts.PoppinsSemiBold,
-  },
-
-  doctorSuggestChip: {
-    marginTop: 6,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: '#ECFDF5',
-    borderWidth: 1,
-    borderColor: '#A7F3D0',
-    borderRadius: 10,
-    paddingHorizontal: 7,
-    paddingVertical: 5,
-  },
-
-  doctorSuggestChipCopy: {
-    flex: 1,
-    minWidth: 0,
-  },
-
-  doctorSuggestChipLabel: {
-    fontSize: 9,
-    color: '#0F766E',
-    fontFamily: Fonts.PoppinsMedium,
-    textTransform: 'uppercase',
-    letterSpacing: 0.2,
-  },
-
-  doctorSuggestChipName: {
-    fontSize: 11,
+    fontSize: 10,
+    lineHeight: 13,
     color: '#0D614E',
     fontFamily: Fonts.PoppinsSemiBold,
+    letterSpacing: 0.2,
+    textTransform: 'capitalize',
+  },
+
+  dietPriceWrap: {
+    marginTop: 8,
+    height: 22,
+    justifyContent: 'center',
+  },
+
+  dietPrice: {
+    fontSize: 16,
+    fontFamily: Fonts.PoppinsSemiBold,
+    color: '#0D614E',
   },
 
   /* ------------------------------- Yoga --------------------------------- */
@@ -906,3 +946,5 @@ const styles = StyleSheet.create({
     marginBottom: 40,
   },
 });
+
+const DietCardSeparator = () => <View style={styles.dietSeparator} />;

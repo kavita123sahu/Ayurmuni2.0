@@ -348,10 +348,10 @@ const HomePage: React.FC = (props: any) => {
 
     const profileKey = String(
       customerData?.active_patient_id ||
-        customerData?.patient_id ||
-        customerData?.id ||
-        customerData?.user_id ||
-        '',
+      customerData?.patient_id ||
+      customerData?.id ||
+      customerData?.user_id ||
+      '',
     ).trim();
     if (profileKey && profileKey !== lastAssessmentProfileKey) {
       lastAssessmentProfileKey = profileKey;
@@ -813,24 +813,6 @@ const HomePage: React.FC = (props: any) => {
               }
             />
 
-            {(YogaSession?.length ?? 0) > 0 && (
-              <View style={styles.homeSection}>
-                <SectionHeader
-                  home
-                  title={yogaSectionTitle}
-                  actionText={(YogaSession?.length ?? 0) > 1 ? 'View all' : ''}
-                  onPress={() =>
-                    props.navigation.navigate('YogaScreen', { viewAll: true })
-                  }
-                />
-                <SuggestedCard
-                  data={Array.isArray(YogaSession) ? YogaSession : []}
-                  navigation={props.navigation}
-                  home
-                />
-              </View>
-            )}
-
             {dietProducts?.length > 0 ? (
               <View style={styles.homeSection}>
                 <SectionHeader
@@ -851,6 +833,26 @@ const HomePage: React.FC = (props: any) => {
                 />
               </View>
             ) : null}
+
+            {(YogaSession?.length ?? 0) > 0 && (
+              <View style={styles.homeSection}>
+                <SectionHeader
+                  home
+                  title={yogaSectionTitle}
+                  actionText={(YogaSession?.length ?? 0) > 1 ? 'View all' : ''}
+                  onPress={() =>
+                    props.navigation.navigate('YogaScreen', { viewAll: true })
+                  }
+                />
+                <SuggestedCard
+                  data={Array.isArray(YogaSession) ? YogaSession : []}
+                  navigation={props.navigation}
+                  home
+                />
+              </View>
+            )}
+
+
 
             {/* <View style={styles.homeSection}>
               <SectionHeader
